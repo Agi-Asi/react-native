@@ -148,7 +148,7 @@ function scanHeader(text /*: string */) /*: {
   const objcRe =
     /^\s*(@(interface|protocol|implementation|class\s|end)|NS_ASSUME_NONNULL_BEGIN)/;
   const cxxRe =
-    /^\s*(namespace\s+[A-Za-z_]|template\s*<|extern\s+"C\+\+"|using\s+(namespace\s|[A-Za-z_]\w*\s*=))/;
+    /^\s*(namespace\s+[A-Za-z_]|template\s*<|extern\s+"C\+\+"|enum\s+class\b|constexpr\b|using\s+(namespace\s|[A-Za-z_]\w*\s*=))/;
 
   for (const rawLine of text.split('\n')) {
     const line = rawLine.replace(/\/\/.*$/, '');
@@ -197,6 +197,22 @@ function scanHeader(text /*: string */) /*: {
       }
     }
   }
+
+  // C++ default member initializer inside an aggregate, e.g.
+  //   struct RCTFontProperties { NSString *family = nil; CGFloat size = NAN; };
+  // Illegal in C/ObjC, so the header is really ObjC++ and cannot compile in a
+  // plain ObjC module. The keyword scan above misses it (no namespace/template/
+  // class keyword). Detect a `struct`/`class` body that contains a member
+  // declaration carrying an `=` initializer. Whole-text (not per-line) so the
+  // aggregate context is required, avoiding false positives on file-scope
+  // definitions. Unguarded by construction (definitions can't sit under a
+  // pure `#ifdef __cplusplus` and still be the ObjC surface).
+  const aggregateMemberInitRe =
+    /\b(?:struct|class)\s+[A-Za-z_]\w*[^;{}]*\{[^{}]*?\b[A-Za-z_][\w\s:<>,]*\**\s+\*?[A-Za-z_]\w*\s*=\s*[^;{}]+;/s;
+  if (aggregateMemberInitRe.test(text)) {
+    hasUnguardedCxx = true;
+  }
+
   return {includes, hasObjC, hasUnguardedCxx, hasGuardedCxx};
 }
 

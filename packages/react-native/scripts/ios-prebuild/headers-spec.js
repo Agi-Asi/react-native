@@ -161,12 +161,16 @@ function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
     if (np.startsWith('React/') && isUmbrellaSafe(h)) {
       umbrella.push(np);
     }
-    // R5: namespace modules (only for ReactNativeHeaders namespaces). `react/`
-    // is exempt — its few modular candidates stay textual so no `react` module
-    // aliases the `React` framework module.
+    // R5: namespace modules (only for ReactNativeHeaders namespaces). Every
+    // namespace with modular candidates gets a module so that React.framework's
+    // modular headers can `#import <ns/...>` as a MODULAR include (otherwise
+    // clang's -Wnon-modular-include-in-framework-module rejects it). `react/` is
+    // included here too — its module is renamed in renderNamespaceModuleMap so a
+    // `react` module never aliases the `React` framework module on a
+    // case-insensitive filesystem.
     if (entryList === reactNativeHeaders) {
       const ns = np.split('/')[0];
-      if (ns !== 'react' && MODULE_IDENT_RE.test(ns) && isUmbrellaSafe(h)) {
+      if (MODULE_IDENT_RE.test(ns) && isUmbrellaSafe(h)) {
         if (!namespaceModules[ns]) {
           namespaceModules[ns] = [];
         }
@@ -214,10 +218,18 @@ function renderUmbrellaHeader(umbrella /*: Array<string> */) /*: string */ {
 function renderNamespaceModuleMap(
   namespaceModules /*: {[string]: Array<string>} */,
 ) /*: string */ {
+  // The module NAME is internal to clang's module graph (consumers never
+  // `@import` these; they `#import <ns/...>` and clang maps the header to its
+  // module). It only has to be unique and must not alias the `React` framework
+  // module on a case-insensitive filesystem — so the lowercase `react`
+  // namespace is given a distinct module name. Header paths are unchanged, so
+  // `<react/...>` still resolves and is now a modular include.
+  const moduleNameFor = (ns /*: string */) /*: string */ =>
+    ns === 'react' ? 'ReactNativeHeaders_react' : ns;
   const blocks = [];
   for (const ns of Object.keys(namespaceModules).sort()) {
     blocks.push(
-      `module ${ns} {\n` +
+      `module ${moduleNameFor(ns)} {\n` +
         namespaceModules[ns].map(hh => `  header "${hh}"`).join('\n') +
         `\n  export *\n}`,
     );
