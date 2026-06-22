@@ -177,7 +177,10 @@ jobs:
         if: steps.restore-ios-xcframework.outputs.cache-hit != 'true'
         run: |
           cd packages/react-native/.build/output/xcframeworks/${{matrix.flavor}}
-          tar -cz -f ../ReactCore${{matrix.flavor}}.xcframework.tar.gz React.xcframework
+          # Ship BOTH xcframeworks: React-Core-prebuilt's prepare_command flattens
+          # ReactNativeHeaders.xcframework's Headers (incl. module.modulemap) into the
+          # pod. Omitting it leaves consumers without React-Core-prebuilt/Headers/module.modulemap.
+          tar -cz -f ../ReactCore${{matrix.flavor}}.xcframework.tar.gz React.xcframework ReactNativeHeaders.xcframework
       - name: Compress and Rename dSYM
         if: steps.restore-ios-xcframework.outputs.cache-hit != 'true'
         run: |
