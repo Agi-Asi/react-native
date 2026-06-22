@@ -159,14 +159,20 @@ function replaceRNCoreConfiguration(
         .find(
           dirent =>
             dirent.isDirectory() &&
-            fs.existsSync(path.join(rnhXcfw, dirent.name.toString(), 'Headers')),
+            fs.existsSync(
+              path.join(rnhXcfw, dirent.name.toString(), 'Headers'),
+            ),
         );
       if (slice) {
         const headersDest = path.join(finalLocation, 'Headers');
         fs.rmSync(headersDest, {force: true, recursive: true});
         const cpHeaders = spawnSync(
           'cp',
-          ['-R', path.join(rnhXcfw, slice.name.toString(), 'Headers'), headersDest],
+          [
+            '-R',
+            path.join(rnhXcfw, slice.name.toString(), 'Headers'),
+            headersDest,
+          ],
           {stdio: 'inherit'},
         );
         if (cpHeaders.status !== 0) {

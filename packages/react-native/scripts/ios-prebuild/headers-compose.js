@@ -89,9 +89,7 @@ function emitReactFrameworkHeaders(
   // by a pre-existing Headers/.
   const slices = fs
     .readdirSync(xcfwPath)
-    .filter(d =>
-      fs.existsSync(path.join(xcfwPath, d, 'React.framework')),
-    );
+    .filter(d => fs.existsSync(path.join(xcfwPath, d, 'React.framework')));
   for (const slice of slices) {
     const fwk = path.join(xcfwPath, slice, 'React.framework');
     fs.rmSync(path.join(fwk, 'Headers'), {recursive: true, force: true});

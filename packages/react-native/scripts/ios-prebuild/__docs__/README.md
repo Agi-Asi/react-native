@@ -122,14 +122,15 @@ overlay**. The layout contract is defined and validated in code:
   rejected.
 - `headers-inventory.js`: scans the source tree to build the live header
   inventory that feeds the spec.
-- `headers-compose.js`: emits the layout. `emitReactFrameworkHeaders()` writes the
-  `React/` and bare-aliased headers into every slice's `React.framework/Headers`,
-  and `buildReactNativeHeadersXcframework()` assembles the headers-only
-  `ReactNativeHeaders.xcframework` carrying every other namespace (incl. `react/`)
-  plus the third-party dependency namespaces (`folly`, `glog`, `boost`, `fmt`,
-  `double-conversion`, `fast_float`). The Hermes public headers (`<hermes/...>`)
-  are folded in only on the SwiftPM consumer side (`ensureHeadersLayout`); the
-  published prebuild artifact does not yet carry them (TODO in `xcframework.js`).
+- `headers-compose.js`: emits the layout. `emitReactFrameworkHeaders()` writes
+  the `React/` and bare-aliased headers into every slice's
+  `React.framework/Headers`, and `buildReactNativeHeadersXcframework()`
+  assembles the headers-only `ReactNativeHeaders.xcframework` carrying every
+  other namespace (incl. `react/`) plus the third-party dependency namespaces
+  (`folly`, `glog`, `boost`, `fmt`, `double-conversion`, `fast_float`). The
+  Hermes public headers (`<hermes/...>`) are folded in only on the SwiftPM
+  consumer side (`ensureHeadersLayout`); the published prebuild artifact does
+  not yet carry them (TODO in `xcframework.js`).
 
 ### Artifacts
 
@@ -138,19 +139,20 @@ The prebuild (`xcframework.js`) always produces:
 - `React.xcframework` — the compiled React core. Each slice's `React.framework`
   carries the headers-spec layout (every `<React/...>` header + the framework
   module map), which is what both CocoaPods and SwiftPM consume.
-- `ReactNativeHeaders.xcframework` — headers-only; carries every other namespace.
-  Consumed by SwiftPM as a `binaryTarget` and by CocoaPods via the
+- `ReactNativeHeaders.xcframework` — headers-only; carries every other
+  namespace. Consumed by SwiftPM as a `binaryTarget` and by CocoaPods via the
   `React-Core-prebuilt` pod (headers flattened onto the header search path).
 
 ### CocoaPods consumption
 
 The `React-Core-prebuilt` pod vends `React.xcframework` (so `<React/...>` and
-`@import React;` resolve through the framework module via `FRAMEWORK_SEARCH_PATHS`)
-and flattens `ReactNativeHeaders.xcframework`'s headers into a top-level `Headers/`
-exposed on the pod header search path (so `<react/...>`, `<yoga/...>`, `<folly/...>`
-resolve). `rncore.rb` adds the `HEADER_SEARCH_PATHS` entry to
-`React-Core-prebuilt/Headers` for podspec, aggregate (main app), and third-party
-pod targets. No `-ivfsoverlay` flags are added.
+`@import React;` resolve through the framework module via
+`FRAMEWORK_SEARCH_PATHS`) and flattens `ReactNativeHeaders.xcframework`'s
+headers into a top-level `Headers/` exposed on the pod header search path (so
+`<react/...>`, `<yoga/...>`, `<folly/...>` resolve). `rncore.rb` adds the
+`HEADER_SEARCH_PATHS` entry to `React-Core-prebuilt/Headers` for podspec,
+aggregate (main app), and third-party pod targets. No `-ivfsoverlay` flags are
+added.
 
 ## Integrating in your project with Cocoapods
 

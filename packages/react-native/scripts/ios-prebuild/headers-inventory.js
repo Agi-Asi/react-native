@@ -218,7 +218,8 @@ function scanHeader(text /*: string */) /*: {
 
 // Meta-internal headers referenced behind RN_DISABLE_OSS_PLUGIN_HEADER (the
 // FB*Plugins pattern) or fbjni/FBI18n — never resolvable in OSS, by design.
-const META_INTERNAL_RE /*: RegExp */ = /^(fbjni|FBI18n)\/|^React\/FB\w+Plugins\.h$/;
+const META_INTERNAL_RE /*: RegExp */ =
+  /^(fbjni|FBI18n)\/|^React\/FB\w+Plugins\.h$/;
 // Non-Apple platform headers (Android-only branches in shared headers).
 const OTHER_PLATFORM_PREFIXES = new Set(['android', 'jni']);
 
