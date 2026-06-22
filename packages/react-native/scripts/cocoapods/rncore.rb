@@ -11,25 +11,16 @@ require_relative './utils.rb'
 
 ### Adds ReactNativeCore-prebuilt as a dependency to the given podspec if we're not
 ### building ReactNativeCore from source (then this function does nothing).
+###
+### `<React/...>` resolves through the vendored React.framework; every other namespace
+### (`<react/...>`, `<yoga/...>`, `<hermes/...>`, ...) resolves through the flattened
+### ReactNativeHeaders headers that React-Core-prebuilt exposes. The header search path
+### and the ReactNativeHeaders module-map activation are NOT added here: they are applied
+### post-install by configure_aggregate_xcconfig, which covers aggregate, third-party AND
+### these pods from a single injection site. No clang VFS overlay.
 def add_rncore_dependency(s)
     if !ReactNativeCoreUtils.build_rncore_from_source()
-        # `<React/...>` resolves through the vendored React.framework; every other
-        # namespace (`<react/...>`, `<yoga/...>`, `<hermes/...>`, ...) resolves
-        # through the flattened ReactNativeHeaders headers that React-Core-prebuilt
-        # exposes on its header search path. No clang VFS overlay.
         s.dependency "React-Core-prebuilt"
-
-        current_pod_target_xcconfig = s.to_hash["pod_target_xcconfig"] || {}
-        current_pod_target_xcconfig = current_pod_target_xcconfig.to_h unless current_pod_target_xcconfig.is_a?(Hash)
-
-        # HEADER_SEARCH_PATHS may already be a String or an Array (e.g. after
-        # add_rn_third_party_dependencies); normalize to an Array before appending.
-        header_search_paths = current_pod_target_xcconfig["HEADER_SEARCH_PATHS"] || []
-        header_search_paths = header_search_paths.split(" ") if header_search_paths.is_a?(String)
-        header_search_paths << "\"$(PODS_ROOT)/React-Core-prebuilt/Headers\""
-        current_pod_target_xcconfig["HEADER_SEARCH_PATHS"] = header_search_paths
-
-        s.pod_target_xcconfig = current_pod_target_xcconfig
     end
 end
 
@@ -516,9 +507,10 @@ class ReactNativeCoreUtils
         return latest_nightly
     end
 
-    # Configures the xcconfig files for aggregate (main app) targets and third-party pod
-    # targets so the prebuilt ReactNativeHeaders are resolvable. These targets do not go
-    # through add_rncore_dependency, so they won't otherwise get the header search path.
+    # Single post-install injection site for the prebuilt header resolution. Adds the
+    # ReactNativeHeaders search path + module-map activation to the aggregate (main app)
+    # target AND every pod target — RN core pods, third-party pods alike. (add_rncore_dependency
+    # only declares the React-Core-prebuilt dependency; it no longer touches xcconfigs.)
     #
     # `<React/...>` resolves through the vendored React.framework; this adds the search
     # path to the flattened ReactNativeHeaders headers (every other namespace). There is
@@ -567,5 +559,12 @@ class ReactNativeCoreUtils
         ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "HEADER_SEARCH_PATHS", headers_search_path)
         # Suppress incomplete umbrella warnings for the prebuilt frameworks (it is expected, as our umbrella headers do not include all headers)
         ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "OTHER_SWIFT_FLAGS", " -Xcc -Wno-incomplete-umbrella")
+        # Activate the ReactNativeHeaders module map so the relocated namespaces
+        # (`yoga`, `RCTDeprecation`, `ReactNativeHeaders_react`, ...) are modular —
+        # otherwise the React framework's clang explicit-module precompile trips
+        # -Wnon-modular-include-in-framework-module on `<yoga/...>` / `<react/...>`.
+        module_map_flag = " -fmodule-map-file=$(PODS_ROOT)/React-Core-prebuilt/Headers/module.modulemap"
+        ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "OTHER_CFLAGS", module_map_flag)
+        ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "OTHER_SWIFT_FLAGS", " -Xcc" + module_map_flag)
     end
 end
