@@ -10,11 +10,18 @@
 
 'use strict';
 
-const {planFromInventory, renderReactModuleMap} = require('../headers-spec');
+const fs = require('fs');
+const {
+  planFromInventory,
+  renderNamespaceModuleMap,
+  renderReactModuleMap,
+} = require('../headers-spec');
 
-// Minimal inventory entry. isUmbrellaSafe reads the source off disk for React/
-// headers; the synthetic paths don't exist so it falls back to false — which is
-// fine here, these tests exercise the R9 allowlist, not umbrella membership.
+// isUmbrellaSafe reads each header's source to reject extern-inline defs. Stub
+// it to empty so synthetic objc-modular-candidate headers count as umbrella-safe
+// (and thus land in namespaceModules), making these tests deterministic.
+jest.spyOn(fs, 'readFileSync').mockReturnValue('');
+
 const entry = (naturalPath /*: string */, bucket /*: string */) => ({
   naturalPath,
   bucket,
@@ -22,7 +29,8 @@ const entry = (naturalPath /*: string */, bucket /*: string */) => ({
   identities: [{source: `does/not/exist/${naturalPath}`}],
 });
 
-// A manifest that satisfies the R9 private-header allowlist.
+// A manifest satisfying both the R9 private-header allowlist and the R10
+// umbrella-namespace allowlist (React_RCTAppDelegate).
 const validManifest = () => ({
   headers: [
     entry('React/RCTBridge+Private.h', 'objc-modular-candidate'),
@@ -32,6 +40,15 @@ const validManifest = () => ({
     entry('React/RCTMountingManager.h', 'objc-blocked'),
     entry('React/RCTSurfacePresenter.h', 'objc-blocked'),
     entry('React/RCTViewComponentView.h', 'objc-blocked'),
+    entry(
+      'React_RCTAppDelegate/RCTReactNativeFactory.h',
+      'objc-modular-candidate',
+    ),
+    entry(
+      'React_RCTAppDelegate/RCTRootViewFactory.h',
+      'objc-modular-candidate',
+    ),
+    entry('React_RCTAppDelegate/RCTAppDelegate.h', 'objc-modular-candidate'),
   ],
 });
 
@@ -82,5 +99,44 @@ describe('planFromInventory R9 validation', () => {
     }
     h.bucket = 'objc-blocked';
     expect(() => planFromInventory(m)).toThrow(/not 'objc-modular-candidate'/);
+  });
+});
+
+describe('R10 per-namespace umbrella (React_RCTAppDelegate)', () => {
+  test('emits a derived umbrella for the namespace', () => {
+    const plan = planFromInventory(validManifest());
+    const u = plan.namespaceUmbrellas.find(
+      x => x.relPath === 'React_RCTAppDelegate/React_RCTAppDelegate-umbrella.h',
+    );
+    expect(u).toBeDefined();
+    if (u == null) {
+      return;
+    }
+    // Imports are relative to the namespace dir, derived from the live set.
+    expect(u.content).toContain('#import "RCTReactNativeFactory.h"');
+    expect(u.content).toContain('#import "RCTRootViewFactory.h"');
+    expect(u.content).toContain('#import "RCTAppDelegate.h"');
+    expect(u.content).toContain('#ifdef __OBJC__');
+    // No CocoaPods version boilerplate.
+    expect(u.content).not.toContain('FOUNDATION_EXPORT');
+  });
+
+  test('module map lists the umbrella so the import stays modular', () => {
+    const plan = planFromInventory(validManifest());
+    const mm = renderNamespaceModuleMap(plan.namespaceModules);
+    expect(mm).toContain('module React_RCTAppDelegate {');
+    expect(mm).toContain(
+      'header "React_RCTAppDelegate/React_RCTAppDelegate-umbrella.h"',
+    );
+  });
+
+  test('fails closed when the umbrella namespace lost its modular headers', () => {
+    const m = validManifest();
+    m.headers = m.headers.filter(
+      x => !x.naturalPath.startsWith('React_RCTAppDelegate/'),
+    );
+    expect(() => planFromInventory(m)).toThrow(
+      /umbrella namespace 'React_RCTAppDelegate'/,
+    );
   });
 });

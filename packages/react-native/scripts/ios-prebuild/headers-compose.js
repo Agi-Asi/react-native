@@ -180,6 +180,14 @@ function buildReactNativeHeadersXcframework(
       console.warn(`headers-compose: hermes headers missing at ${src}`);
     }
   }
+  // R10: per-namespace umbrella headers (e.g. React_RCTAppDelegate-umbrella.h)
+  // that consumers like Expo probe via __has_include. Must be staged before the
+  // module map references them.
+  for (const u of plan.namespaceUmbrellas) {
+    const dest = path.join(stage, u.relPath);
+    fs.mkdirSync(path.dirname(dest), {recursive: true});
+    fs.writeFileSync(dest, u.content);
+  }
   fs.writeFileSync(
     path.join(stage, 'module.modulemap'),
     renderNamespaceModuleMap(plan.namespaceModules),

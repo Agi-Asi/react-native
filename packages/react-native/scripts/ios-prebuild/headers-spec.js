@@ -81,6 +81,8 @@ export type HeadersSpecPlan = {
   umbrella: Array<string>,
   // R5: plain modules for ReactNativeHeaders' module.modulemap
   namespaceModules: {[ns: string]: Array<string>},
+  // R10: per-namespace umbrella headers emitted into ReactNativeHeaders.
+  namespaceUmbrellas: Array<{relPath: string, content: string}>,
   // R9: private headers added to the React module map (allowlist).
   privateReactHeaders: {modular: Array<string>, textual: Array<string>},
   collisions: Array<string>,
@@ -175,6 +177,32 @@ function isUmbrellaSafe(h /*: any */) /*: boolean */ {
   }
 }
 
+// R10: per-namespace umbrella headers. Some consumers (e.g. Expo's
+// RCTAppDelegateUmbrella.h) probe
+// `<React_RCTAppDelegate/React_RCTAppDelegate-umbrella.h>` via __has_include.
+// The flattened ReactNativeHeaders layout (R2/R5) ships the individual
+// namespace headers but no umbrella, so the probe fails and e.g.
+// RCTReactNativeFactory / RCTRootViewFactory are never declared. Re-emit a
+// per-namespace umbrella for the namespaces consumers probe — content DERIVED
+// from namespaceModules (R5) so it can't drift — and add it to that
+// namespace's module so the import stays modular under explicit modules.
+// Targeted (not all namespaces): only those a consumer imports as
+// `<ns/ns-umbrella.h>`. Extend as the ecosystem surfaces more.
+const UMBRELLA_NAMESPACES /*: Array<string> */ = ['React_RCTAppDelegate'];
+
+// Renders a per-namespace umbrella that re-imports the namespace's modular
+// headers. Paths are relative to the namespace dir (where the umbrella lives),
+// so the first `<ns>/` segment is stripped.
+function renderNamespaceUmbrella(
+  ns /*: string */,
+  headers /*: Array<string> */,
+) /*: string */ {
+  const imports = headers
+    .map(np => `#import "${np.slice(ns.length + 1)}"`)
+    .join('\n');
+  return `#ifdef __OBJC__\n#import <UIKit/UIKit.h>\n#endif\n\n${imports}\n`;
+}
+
 /**
  * Computes the full layout plan from the header inventory manifest
  * (build/header-inventory.json — regenerate with header-inventory.js).
@@ -246,12 +274,30 @@ function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
     namespaceModules[ns].sort();
   }
 
+  // R10: fail closed if a probed umbrella namespace lost all its modular
+  // headers (removed/renamed) — the umbrella would silently vanish and
+  // re-break consumers like Expo.
+  const namespaceUmbrellas = UMBRELLA_NAMESPACES.map(ns => {
+    const headers = namespaceModules[ns];
+    if (headers == null || headers.length === 0) {
+      throw new Error(
+        `R10: umbrella namespace '${ns}' has no modular headers in the ` +
+          `inventory (removed/renamed?). Update UMBRELLA_NAMESPACES.`,
+      );
+    }
+    return {
+      relPath: `${ns}/${ns}-umbrella.h`,
+      content: renderNamespaceUmbrella(ns, headers),
+    };
+  });
+
   return {
     react,
     reactNativeHeaders,
     depsNamespaces: DEPS_NAMESPACES,
     umbrella,
     namespaceModules,
+    namespaceUmbrellas,
     privateReactHeaders: PRIVATE_REACT_HEADERS,
     collisions,
   };
@@ -304,9 +350,16 @@ function renderNamespaceModuleMap(
     ns === 'react' ? 'ReactNativeHeaders_react' : ns;
   const blocks = [];
   for (const ns of Object.keys(namespaceModules).sort()) {
+    const headerLines = namespaceModules[ns].map(hh => `  header "${hh}"`);
+    // R10: the per-namespace umbrella is itself a module member, so importing
+    // it stays modular (otherwise it re-trips -Wnon-modular-include inside the
+    // consumer's framework module).
+    if (UMBRELLA_NAMESPACES.includes(ns)) {
+      headerLines.push(`  header "${ns}/${ns}-umbrella.h"`);
+    }
     blocks.push(
       `module ${moduleNameFor(ns)} {\n` +
-        namespaceModules[ns].map(hh => `  header "${hh}"`).join('\n') +
+        headerLines.join('\n') +
         `\n  export *\n}`,
     );
   }
