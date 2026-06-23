@@ -98,7 +98,7 @@ function emitReactFrameworkHeaders(
     fs.mkdirSync(path.join(fwk, 'Modules'), {recursive: true});
     fs.writeFileSync(
       path.join(fwk, 'Modules', 'module.modulemap'),
-      renderReactModuleMap(),
+      renderReactModuleMap(plan.privateReactHeaders),
     );
   }
   fs.rmSync(stage, {recursive: true, force: true});

@@ -81,6 +81,8 @@ export type HeadersSpecPlan = {
   umbrella: Array<string>,
   // R5: plain modules for ReactNativeHeaders' module.modulemap
   namespaceModules: {[ns: string]: Array<string>},
+  // R9: private headers added to the React module map (allowlist).
+  privateReactHeaders: {modular: Array<string>, textual: Array<string>},
   collisions: Array<string>,
 };
 */
@@ -101,6 +103,65 @@ const EXTERN_INLINE_RE /*: RegExp */ =
 
 const MODULE_IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+// R9: Private React headers — a curated allowlist of `<React/...>` headers that
+// privileged framework consumers (e.g. Expo) import, but which the public
+// umbrella (R4) excludes (they are `+`-suffixed and/or objc-blocked). They are
+// already shipped in React.framework/Headers; adding them to the React module
+// map keeps the existing `#import <React/...>` sites MODULAR under explicit
+// modules — backwards-compatible, no consumer import (or Swift) changes. Split
+// by inventory bucket:
+//   - modular: objc-modular-candidate (reach no C++) -> real `header`.
+//   - textual: objc-blocked (reach C++ via `<react/...>`) -> `textual header`
+//     (a real member would re-trip -Wnon-modular-include; the C++ includes
+//     resolve at the consumer's use site, exactly as under the old VFS overlay).
+// Privacy is by convention (the `+Private`/internal naming): a single binary
+// artifact cannot hard-gate apps from headers a framework legitimately needs.
+const PRIVATE_REACT_HEADERS /*: {modular: Array<string>, textual: Array<string>} */ =
+  {
+    modular: ['RCTBridge+Private.h'],
+    textual: [
+      'RCTComponentViewFactory.h',
+      'RCTComponentViewProtocol.h',
+      'RCTComponentViewRegistry.h',
+      'RCTMountingManager.h',
+      'RCTSurfacePresenter.h',
+      'RCTViewComponentView.h',
+    ],
+  };
+
+// Fail closed if an allowlisted private header drifts: it must exist in the
+// inventory (else it was removed/renamed in source — e.g. RCTUIKit.h /
+// RCTRootContentView.h, which need restoration, NOT this allowlist), and a
+// `modular` entry must really be objc-modular-candidate (else it now reaches
+// C++/third-party and must move to `textual`).
+function validatePrivateReactHeaders(manifest /*: any */) /*: void */ {
+  const byNatural = new Map(manifest.headers.map(h => [h.naturalPath, h]));
+  const requireShipped = (name /*: string */) => {
+    const e = byNatural.get(`React/${name}`);
+    if (e == null) {
+      throw new Error(
+        `Private React header allowlist: React/${name} is absent from the ` +
+          `inventory (removed/renamed in source?). Restore the header or remove ` +
+          `it from PRIVATE_REACT_HEADERS.`,
+      );
+    }
+    return e;
+  };
+  for (const name of PRIVATE_REACT_HEADERS.modular) {
+    const e = requireShipped(name);
+    if (e.bucket !== 'objc-modular-candidate') {
+      throw new Error(
+        `Private React header React/${name} is bucket '${e.bucket}', not ` +
+          `'objc-modular-candidate' — it now reaches C++/third-party. Move it ` +
+          `to PRIVATE_REACT_HEADERS.textual.`,
+      );
+    }
+  }
+  for (const name of PRIVATE_REACT_HEADERS.textual) {
+    requireShipped(name);
+  }
+}
+
 function isUmbrellaSafe(h /*: any */) /*: boolean */ {
   if (h.bucket !== 'objc-modular-candidate' || h.naturalPath.includes('+')) {
     return false;
@@ -119,6 +180,7 @@ function isUmbrellaSafe(h /*: any */) /*: boolean */ {
  * (build/header-inventory.json — regenerate with header-inventory.js).
  */
 function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
+  validatePrivateReactHeaders(manifest); // R9: fail closed on allowlist drift
   const react /*: Array<SpecEntry> */ = [];
   const reactNativeHeaders /*: Array<SpecEntry> */ = [];
   const umbrella /*: Array<string> */ = [];
@@ -190,14 +252,28 @@ function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
     depsNamespaces: DEPS_NAMESPACES,
     umbrella,
     namespaceModules,
+    privateReactHeaders: PRIVATE_REACT_HEADERS,
     collisions,
   };
 }
 
-/** Renders React.framework's module map (R4). */
-function renderReactModuleMap() /*: string */ {
+/**
+ * Renders React.framework's module map (R4 + R9). The umbrella covers the
+ * public modular surface; the allowlisted private headers (R9) are appended as
+ * explicit `header` (modular) / `textual header` (objc-blocked) entries so
+ * `#import <React/...>` of them stays modular without polluting the umbrella.
+ */
+function renderReactModuleMap(
+  privateReactHeaders /*:: ?: {modular: Array<string>, textual: Array<string>} */,
+) /*: string */ {
+  const pv = privateReactHeaders ?? {modular: [], textual: []};
+  const extra = [
+    ...pv.modular.map(h => `  header "${h}"`),
+    ...pv.textual.map(h => `  textual header "${h}"`),
+  ];
+  const extraBlock = extra.length > 0 ? '\n' + extra.join('\n') : '';
   return `framework module React {
-  umbrella header "React-umbrella.h"
+  umbrella header "React-umbrella.h"${extraBlock}
   export *
   module * { export * }
 }
