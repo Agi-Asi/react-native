@@ -160,11 +160,21 @@ function buildReactNativeHeadersXcframework(
   stageEntries(stage, plan.reactNativeHeaders, rnRoot);
   for (const ns of plan.depsNamespaces) {
     const src = path.join(depsHeaders, ns);
-    if (fs.existsSync(src)) {
-      execSync(`/bin/cp -Rc "${src}" "${path.join(stage, ns)}"`);
-    } else {
-      console.warn(`headers-compose: deps namespace missing: ${ns}`);
+    // Fail closed: a declared deps namespace (folly/glog/boost/...) missing
+    // from the staged ReactNativeDependencies headers means the artifact would
+    // ship WITHOUT those `<folly/...>`-style headers — a silently-broken
+    // ReactNativeHeaders.xcframework (consumers lose third-party header
+    // resolution). Refuse rather than emit it. Stage
+    // third-party/ReactNativeDependencies.xcframework/Headers (full prebuild or
+    // cache slot) before composing.
+    if (!fs.existsSync(src)) {
+      throw new Error(
+        `headers-compose: deps namespace '${ns}' missing under ${depsHeaders}. ` +
+          `ReactNativeDependencies headers are not staged — refusing to ship an ` +
+          `incomplete ReactNativeHeaders.xcframework.`,
+      );
     }
+    execSync(`/bin/cp -Rc "${src}" "${path.join(stage, ns)}"`);
   }
   // Hermes public headers (separate source from the deps namespaces — they
   // come from the hermes-ios tarball, not ReactNativeDependencies). Vend only
