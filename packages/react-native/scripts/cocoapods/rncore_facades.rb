@@ -17,7 +17,8 @@ require 'fileutils'
 # explicit-module precompile.
 #
 # Instead we install dependency-only FACADE podspecs for those names: they ship
-# no source files and no headers, so CocoaPods makes them PBXAggregateTarget
+# no source files and (with one narrow exception, see FACADE_REEXPOSED_HEADERS)
+# no headers, so CocoaPods makes them PBXAggregateTarget
 # placeholders (should_build? == false) and nothing is laid down to shadow. Each
 # facade depends on React-Core-prebuilt so its consumers transitively pick up the
 # prebuilt framework + headers. The pod NAMES still resolve, so ReactCodegen,
@@ -50,6 +51,36 @@ module RNCoreFacades
         "RCTDeprecation"   => "ReactApple/Libraries/RCTFoundation/RCTDeprecation/RCTDeprecation.podspec",
         "FBLazyVector"     => "Libraries/FBLazyVector/FBLazyVector.podspec",
         "RCTRequired"      => "Libraries/Required/RCTRequired.podspec",
+    }
+
+    # A facade ships NO headers by default — the prebuilt React.framework /
+    # React-Core-prebuilt own them. NARROW EXCEPTION: a few headers live ONLY
+    # inside React.framework/Headers (served angle-only as <React/...>, e.g.
+    # because they reach unguarded C++ and are excluded from the framework module
+    # map) and are NOT in the flattened React-Core-prebuilt/Headers. A quoted
+    # `#import "<name>.h"` therefore has no resolution target in prebuilt mode.
+    #
+    # Community Fabric modules quote-import RCTFabricComponentsPlugins.h (47x in a
+    # full app: slider, maps, pager-view, keyboard-controller, ...). In source it
+    # was vended by React-RCTFabric at header_dir "React", which put it in
+    # dependents' CocoaPods header maps so the bare quoted name resolved. The
+    # facade dropped it. We re-vend JUST that header here so dependents' header
+    # maps carry it again, exactly as the source pod did.
+    #
+    # Re-exposing a SINGLE header (not the whole React/ namespace) does not put
+    # <react/...>/<yoga/...> on -I, so it does NOT reintroduce the
+    # -Wnon-modular-include-in-framework-module shadowing the modular prebuilt
+    # layout exists to eliminate. The header is core-only (matches source: it
+    # only ever declared RN's built-in components; third-party Fabric components
+    # register via the codegen RCTThirdPartyComponentsProvider, shipped by the
+    # non-facaded ReactCodegen pod).
+    #
+    # pod name => { "header_dir" => <dir>, "globs" => [<glob rel. to its podspec dir>] }
+    FACADE_REEXPOSED_HEADERS = {
+        "React-RCTFabric" => {
+            "header_dir" => "React",
+            "globs" => ["Fabric/Mounting/ComponentViews/RCTFabricComponentsPlugins.h"],
+        },
     }
 
     # Sub-directory (relative to the install root) that holds the generated facades.
@@ -110,6 +141,24 @@ module RNCoreFacades
             spec["resource_bundles"] = resource_bundles unless resource_bundles.empty?
             resources = derive_resources(real, podspec_dir, dir)
             spec["resources"] = resources unless resources.empty?
+
+            # Re-vend the narrow set of angle-only framework headers that community
+            # modules quote-import (see FACADE_REEXPOSED_HEADERS). The header is
+            # COPIED into the facade dir (a self-contained snapshot — robust, no
+            # `..` globs reaching out of the pod) and exposed as a public header.
+            # It's header-only (a `.h` has nothing to compile, so the facade stays
+            # a placeholder), but CocoaPods lays it into
+            # Pods/Headers/Public/<Name>/<header_dir>/ and dependents' .hmap,
+            # restoring quoted resolution exactly as the source pod did.
+            reexposed = FACADE_REEXPOSED_HEADERS[name]
+            if reexposed
+                copied = copy_reexposed_headers(reexposed["globs"], podspec_dir, dir, name)
+                unless copied.empty?
+                    spec["source_files"] = copied
+                    spec["public_header_files"] = copied
+                    spec["header_dir"] = reexposed["header_dir"] if reexposed["header_dir"]
+                end
+            end
 
             # Preserve default_subspec so a bare `pod '<Name>'` resolves to the SAME
             # subspec graph as the source pod (without it CocoaPods pulls every
@@ -175,6 +224,29 @@ module RNCoreFacades
         out
     end
     private_class_method :derive_resource_bundles
+
+    # Copy the re-exposed header(s) into the facade dir (flat) and return the
+    # facade-relative source_files entries. `globs` are resolved against the real
+    # podspec dir. A glob that matches nothing is a hard error: the whole point is
+    # to keep a quoted-import header resolvable, so silently shipping a facade
+    # without it would reintroduce the exact "file not found" we're fixing.
+    def self.copy_reexposed_headers(globs, podspec_dir, facade_dir, name)
+        copied = []
+        Array(globs).each do |g|
+            matches = Dir.glob(File.expand_path(g, podspec_dir))
+            if matches.empty?
+                raise "[RNCoreFacades] Re-exposed header glob '#{g}' for facade '#{name}' " \
+                      "matched no files under #{podspec_dir}. Update FACADE_REEXPOSED_HEADERS."
+            end
+            matches.each do |src|
+                base = File.basename(src)
+                FileUtils.cp(src, File.join(facade_dir, base))
+                copied << base
+            end
+        end
+        copied.uniq
+    end
+    private_class_method :copy_reexposed_headers
 
     # Loose `resources` of the real spec, rewritten relative to the facade dir.
     def self.derive_resources(real, podspec_dir, facade_dir)
