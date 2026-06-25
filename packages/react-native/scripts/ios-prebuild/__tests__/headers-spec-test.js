@@ -10,12 +10,12 @@
 
 'use strict';
 
-const fs = require('fs');
 const {
   planFromInventory,
   renderNamespaceModuleMap,
   renderReactModuleMap,
 } = require('../headers-spec');
+const fs = require('fs');
 
 // isUmbrellaSafe reads each header's source to reject extern-inline defs. Stub
 // it to empty so synthetic objc-modular-candidate headers count as umbrella-safe
