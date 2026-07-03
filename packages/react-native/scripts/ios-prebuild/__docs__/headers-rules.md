@@ -31,7 +31,7 @@ everything else. No overlay, no include rewriting, no consumer flags.
 
 ## The pipeline
 
-```
+```text
 podspecs ──► headers-inventory.js ──► inventory (facts per header)
                                           │
                                           ▼
@@ -136,7 +136,7 @@ what keeps source builds and prebuilt builds semantically identical.
 **R4 — the React framework module map is an umbrella over the _safe_ ObjC
 surface.** A header enters the umbrella iff `isUmbrellaSafe`:
 
-```
+```text
 bucket == objc-modular-candidate
 ∧ React/-namespace
 ∧ no '+' in the filename            (category headers, e.g. +Private — see R9)
@@ -184,7 +184,7 @@ public umbrella excludes. Rather than a `React.Private` submodule (which would
 force a Swift `import React.Private` in consumers) they are appended to the
 module map, split by bucket:
 
-```
+```text
 framework module React {
   umbrella header "React-umbrella.h"
   header "RCTBridge+Private.h"                 // objc-modular-candidate → real member
