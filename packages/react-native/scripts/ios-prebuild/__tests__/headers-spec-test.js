@@ -22,11 +22,15 @@ const fs = require('fs');
 // (and thus land in namespaceModules), making these tests deterministic.
 jest.spyOn(fs, 'readFileSync').mockReturnValue('');
 
-const entry = (naturalPath /*: string */, bucket /*: string */) => ({
+const entry = (
+  naturalPath /*: string */,
+  bucket /*: string */,
+  source /*:: ?: string */,
+) => ({
   naturalPath,
   bucket,
   lang: 'objc',
-  identities: [{source: `does/not/exist/${naturalPath}`}],
+  identities: [{source: source ?? `does/not/exist/${naturalPath}`}],
 });
 
 // A manifest satisfying both the R9 private-header allowlist and the R10
@@ -138,5 +142,115 @@ describe('R10 per-namespace umbrella (React_RCTAppDelegate)', () => {
     expect(() => planFromInventory(m)).toThrow(
       /umbrella namespace 'React_RCTAppDelegate'/,
     );
+  });
+});
+
+describe('R5 invalid-identifier exemption assert (H5)', () => {
+  test('throws when an invalid-identifier namespace gains a modular candidate', () => {
+    const m = validManifest();
+    m.headers.push(entry('bad-namespace/Foo.h', 'objc-modular-candidate'));
+    expect(() => planFromInventory(m)).toThrow(
+      /namespace 'bad-namespace' is not a valid module identifier/,
+    );
+  });
+
+  test('invalid-identifier namespaces with only non-modular headers stay exempt', () => {
+    const m = validManifest();
+    m.headers.push(entry('jsinspector-modern/Foo.h', 'objcxx'));
+    expect(() => planFromInventory(m)).not.toThrow();
+  });
+});
+
+describe('R11 redirect shims for dual-identity headers', () => {
+  test('RNH spelling of a source that also ships as React/ becomes a shim', () => {
+    const m = validManifest();
+    m.headers.push(
+      entry('React/RCTClipboard.h', 'objc-modular-candidate', 'src/clip.h'),
+      entry(
+        'CoreModules/RCTClipboard.h',
+        'objc-modular-candidate',
+        'src/clip.h',
+      ),
+    );
+    const plan = planFromInventory(m);
+    const shim = plan.reactNativeHeaders.find(
+      e => e.naturalPath === 'CoreModules/RCTClipboard.h',
+    );
+    expect(shim?.redirectTo).toBe('React/RCTClipboard.h');
+    // The React/ owner keeps its content.
+    const owner = plan.react.find(
+      e => e.naturalPath === 'React/RCTClipboard.h',
+    );
+    expect(owner?.redirectTo).toBeUndefined();
+    // The shim stays a namespace-module member (imports the owning module).
+    expect(plan.namespaceModules.CoreModules).toContain(
+      'CoreModules/RCTClipboard.h',
+    );
+  });
+
+  test('bare root alias shims to its RNH namespaced owner', () => {
+    const m = validManifest();
+    m.headers.push(
+      entry('RCTAppDelegate.h', 'objc-modular-candidate', 'src/appdelegate.h'),
+    );
+    // Same source as the namespaced form.
+    const ns = m.headers.find(
+      x => x.naturalPath === 'React_RCTAppDelegate/RCTAppDelegate.h',
+    );
+    if (ns == null) {
+      throw new Error('fixture missing namespaced RCTAppDelegate.h');
+    }
+    ns.identities[0].source = 'src/appdelegate.h';
+    const plan = planFromInventory(m);
+    const bare = plan.react.find(e => e.naturalPath === 'RCTAppDelegate.h');
+    expect(bare?.redirectTo).toBe('React_RCTAppDelegate/RCTAppDelegate.h');
+    const owner = plan.reactNativeHeaders.find(
+      e => e.naturalPath === 'React_RCTAppDelegate/RCTAppDelegate.h',
+    );
+    expect(owner?.redirectTo).toBeUndefined();
+  });
+
+  test('single-identity headers get no redirect', () => {
+    const plan = planFromInventory(validManifest());
+    for (const e of [...plan.react, ...plan.reactNativeHeaders]) {
+      expect(e.redirectTo).toBeUndefined();
+    }
+  });
+});
+
+describe('headers-verify gate pieces', () => {
+  const {
+    diffAgainstBaseline,
+    renderObjcFixture,
+    renderPrivilegedFixture,
+  } = require('../headers-verify');
+
+  test('diffAgainstBaseline ratchets: new offenders fail, resolved reported', () => {
+    const {newOffenders, resolved} = diffAgainstBaseline(
+      ['a', 'c'],
+      ['a', 'b'],
+    );
+    expect(newOffenders).toEqual(['c']);
+    expect(resolved).toEqual(['b']);
+  });
+
+  test('ObjC fixture asserts and imports the R9/R10 + module surfaces', () => {
+    const plan = planFromInventory(validManifest());
+    const tu = renderObjcFixture(plan);
+    expect(tu).toContain('__has_include(<React/RCTBridge+Private.h>)');
+    expect(tu).toContain(
+      '__has_include(<React_RCTAppDelegate/React_RCTAppDelegate-umbrella.h>)',
+    );
+    expect(tu).toContain('#import <React/RCTBridge.h>');
+    expect(tu).toContain('#import <React/RCTBridge+Private.h>');
+    // One import per namespace module (fixture has React_RCTAppDelegate).
+    expect(tu).toMatch(/#import <React_RCTAppDelegate\//);
+  });
+
+  test('privileged fixture imports every R9 textual header', () => {
+    const plan = planFromInventory(validManifest());
+    const tu = renderPrivilegedFixture(plan);
+    expect(tu).toContain('#import <React/RCTMountingManager.h>');
+    expect(tu).toContain('#import <React/RCTViewComponentView.h>');
   });
 });

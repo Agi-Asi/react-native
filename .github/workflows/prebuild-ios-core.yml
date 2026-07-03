@@ -189,6 +189,16 @@ jobs:
         run: |
           cd packages/react-native
           node scripts/ios-prebuild -c -f "${{ matrix.flavor }}" -i "React Org"
+      - name: Verify composed headers
+        if: steps.restore-ios-xcframework.outputs.cache-hit != 'true'
+        run: |
+          # Generator-time header gate: include-health ratchet, structural
+          # byte-compare of module maps/umbrellas against the spec render, and
+          # compile smokes (React module + every namespace module + the
+          # privileged-consumer/Expo fixtures). Catches consumer-facing header
+          # regressions here instead of in downstream builds.
+          cd packages/react-native
+          node scripts/ios-prebuild/headers-verify.js --flavor "${{ matrix.flavor }}"
       - name: Compress and Rename XCFramework
         if: steps.restore-ios-xcframework.outputs.cache-hit != 'true'
         run: |

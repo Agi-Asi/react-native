@@ -62,20 +62,23 @@ type HeaderEntry = {
     otherPlatform: Array<string>,
     notShipped: Array<string>,
     unresolved: Array<string>,
+    // Quoted includes that do not resolve to a shipped header. Fine inside the
+    // framework binary's own compilation, but a consumer compiling the shipped
+    // header hits "file not found" (source builds mask this via pod header
+    // maps). Gated by the include-health ratchet (headers-verify.js).
+    quotedNotShipped: Array<string>,
   },
 };
 */
 
 // Third-party C++ libraries that RN's public headers re-expose (Tier 3 of the
-// modularization doc). Keyed by the first include-path segment.
-const THIRD_PARTY_LIBS /*: Set<string> */ = new Set([
-  'folly',
-  'boost',
-  'fmt',
-  'glog',
-  'double-conversion',
-  'fast_float',
-]);
+// modularization doc). Keyed by the first include-path segment. Single source
+// of truth: the spec's DEPS_NAMESPACES (the namespaces relocated into
+// ReactNativeHeaders) — a new third-party dep is declared ONCE and both the
+// include classifier and the compose step follow. (headers-spec.js requires
+// only fs/path, so this cannot cycle.)
+const {DEPS_NAMESPACES} = require('./headers-spec');
+const THIRD_PARTY_LIBS /*: Set<string> */ = new Set(DEPS_NAMESPACES);
 
 // Apple SDK / platform include roots (first path segment). Includes resolving
 // here are "system": always modular or always available, never our problem.
@@ -295,6 +298,7 @@ function buildInventory(rootFolder /*: string */) /*: {
           otherPlatform: [],
           notShipped: [],
           unresolved: [],
+          quotedNotShipped: [],
         },
       };
       entries.set(naturalPath, entry);
@@ -424,9 +428,14 @@ function classifyEntries(
             naturalPath: naturals[0],
             cxxGuarded: inc.cxxGuarded,
           });
+        } else {
+          // A quoted include in a SHIPPED header that doesn't land on another
+          // shipped header: works in source builds (pod header maps / sibling
+          // files) but has no resolution target in the packaged layout when a
+          // consumer compiles this header. Recorded for the include-health
+          // ratchet rather than silently dropped.
+          entry.includes.quotedNotShipped.push(token);
         }
-        // Quoted includes that don't land on a shipped header are
-        // pod-internal/private — not part of the public surface contract.
         continue;
       }
       if (entries.has(token)) {

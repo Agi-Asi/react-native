@@ -45,7 +45,7 @@
  *     non-modular framework headers; yoga + RCTDeprecation found
  *     empirically). Namespaces whose name is not a valid module identifier
  *     (e.g. jsinspector-modern) are exempt — they have no candidates today;
- *     the verifier asserts that stays true. `react/` is also exempt: its few
+ *     planFromInventory FAILS CLOSED if that changes. `react/` is also exempt: its few
  *     objc-modular-candidates stay textual (as they already were inside
  *     React.framework) so no `react` module aliases the `React` framework
  *     module.
@@ -56,6 +56,20 @@
  *     header manifest).
  * R8. Collisions are ERRORS: two different source files may never project to
  *     the same destination path.
+ * R11. ONE source file, ONE content location. Some sources ship under several
+ *     spellings (React/X.h + a legacy pod-namespace form like CoreModules/X.h,
+ *     or a bare root alias + React_RCTAppDelegate/X.h). Under the VFS overlay
+ *     all spellings mapped to one physical file, so #import-once and module
+ *     ownership were coherent. The flattened layout would duplicate the
+ *     declarations — any -fmodules consumer touching two spellings (even
+ *     transitively: a legacy-spelling import whose header pulls a modular
+ *     <React/...>) hits redefinition errors. Therefore: the MODULE-OWNED
+ *     spelling keeps the content (the React/ form when it exists — it is the
+ *     umbrella/module-React owner or the canonical textual home; else the
+ *     R5-module namespaced form), and every other spelling is emitted as a
+ *     one-line redirect shim (`#import <owner>`). Shims that are namespace-
+ *     module members are fine: they import the owning module, so declarations
+ *     stay single-owned.
  */
 
 const fs = require('fs');
@@ -71,6 +85,9 @@ export type SpecEntry = {
   relPath: string, // destination under the artifact's Headers root
   source: string, // repo-relative source file
   naturalPath: string, // canonical include identity (inventory key)
+  // R11: when set, the destination is a one-line redirect shim
+  // (`#import <redirectTo>`) instead of a copy of the source file.
+  redirectTo?: string,
 };
 
 export type HeadersSpecPlan = {
@@ -92,7 +109,10 @@ export type HeadersSpecPlan = {
 };
 */
 
-// R2: third-party namespaces relocated from the deps artifact.
+// R2: third-party namespaces relocated from the deps artifact. Kept in exact
+// sync with the artifact's Headers/ dirs — compose fails closed on a missing
+// OR an undeclared namespace, and the include classifier
+// (headers-inventory.js THIRD_PARTY_LIBS) derives from this same list.
 const DEPS_NAMESPACES = [
   'folly',
   'glog',
@@ -100,6 +120,7 @@ const DEPS_NAMESPACES = [
   'fmt',
   'double-conversion',
   'fast_float',
+  'SocketRocket',
 ];
 
 // R4/R5 umbrella exclusion: C extern-inline definitions.
@@ -270,7 +291,21 @@ function planFromInventory(
     // case-insensitive filesystem.
     if (entryList === reactNativeHeaders) {
       const ns = np.split('/')[0];
-      if (MODULE_IDENT_RE.test(ns) && isUmbrellaSafe(h, root)) {
+      if (isUmbrellaSafe(h, root)) {
+        // R5 exemption assert: a namespace whose name is not a valid module
+        // identifier cannot get a module, so a modular-candidate header in it
+        // would be silently non-modular — consumers importing it from a
+        // framework-module context hit -Wnon-modular-include downstream.
+        // Fail here instead: rename the namespace or keep the header out of
+        // the modular surface.
+        if (!MODULE_IDENT_RE.test(ns)) {
+          throw new Error(
+            `R5: namespace '${ns}' is not a valid module identifier but ` +
+              `ships a modular-candidate header (${np}). It cannot get a ` +
+              `namespace module, so the header would be silently ` +
+              `non-modular for consumers.`,
+          );
+        }
         if (!namespaceModules[ns]) {
           namespaceModules[ns] = [];
         }
@@ -282,6 +317,51 @@ function planFromInventory(
   umbrella.sort();
   for (const ns of Object.keys(namespaceModules)) {
     namespaceModules[ns].sort();
+  }
+
+  // R11: assign redirect shims for duplicate spellings of one source.
+  // Owner precedence: the React/ form (module React / canonical textual home)
+  // when the source ships one; else the RNH namespaced form (the R5-module
+  // owner — bare root aliases redirect INTO it, since content must live at
+  // the module-owned spelling or dual-module/dual-copy redefinitions return).
+  const reactBySource /*: Map<string, string> */ = new Map();
+  for (const e of react) {
+    if (e.naturalPath.startsWith('React/')) {
+      reactBySource.set(e.source, e.relPath);
+    }
+  }
+  const rnhBySource /*: Map<string, string> */ = new Map();
+  for (const e of reactNativeHeaders) {
+    if (!rnhBySource.has(e.source)) {
+      rnhBySource.set(e.source, e.naturalPath);
+    }
+  }
+  for (const e of reactNativeHeaders) {
+    const reactForm = reactBySource.get(e.source);
+    if (reactForm != null) {
+      e.redirectTo = `React/${reactForm}`;
+    } else {
+      // Two RNH spellings of one source with no React/ form: the first is
+      // the owner, later ones shim to it.
+      const owner = rnhBySource.get(e.source);
+      if (owner != null && owner !== e.naturalPath) {
+        e.redirectTo = owner;
+      }
+    }
+  }
+  for (const e of react) {
+    if (e.naturalPath.includes('/')) {
+      continue; // real React/ content, never a shim
+    }
+    // Bare root alias: prefer the React/ owner (three-spelling case), else
+    // the RNH namespaced sibling (the React_RCTAppDelegate rule).
+    const reactForm = reactBySource.get(e.source);
+    const nsForm = rnhBySource.get(e.source);
+    if (reactForm != null) {
+      e.redirectTo = `React/${reactForm}`;
+    } else if (nsForm != null) {
+      e.redirectTo = nsForm;
+    }
   }
 
   // R10: fail closed if a probed umbrella namespace lost all its modular
