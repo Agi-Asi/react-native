@@ -30,6 +30,8 @@
  */
 
 const {getHeaderFilesFromPodspecs} = require('./headers');
+// headers-spec.js requires only fs/path, so this cannot cycle.
+const {DEPS_NAMESPACES} = require('./headers-spec');
 const fs = require('fs');
 const path = require('path');
 
@@ -70,14 +72,11 @@ type HeaderEntry = {
   },
 };
 */
-
 // Third-party C++ libraries that RN's public headers re-expose (Tier 3 of the
 // modularization doc). Keyed by the first include-path segment. Single source
 // of truth: the spec's DEPS_NAMESPACES (the namespaces relocated into
 // ReactNativeHeaders) — a new third-party dep is declared ONCE and both the
-// include classifier and the compose step follow. (headers-spec.js requires
-// only fs/path, so this cannot cycle.)
-const {DEPS_NAMESPACES} = require('./headers-spec');
+// include classifier and the compose step follow.
 const THIRD_PARTY_LIBS /*: Set<string> */ = new Set(DEPS_NAMESPACES);
 
 // Apple SDK / platform include roots (first path segment). Includes resolving
