@@ -20,6 +20,7 @@
 const {computeInventory} = require('./headers-inventory');
 const {
   DEPS_NAMESPACES,
+  DEPS_NAMESPACES_NOT_RELOCATED,
   planFromInventory,
   renderNamespaceModuleMap,
   renderReactModuleMap,
@@ -189,22 +190,24 @@ function buildReactNativeHeadersXcframework(
     execSync(`/bin/cp -Rc "${src}" "${path.join(stage, ns)}"`);
   }
   // Set equality with the deps artifact: a namespace dir present in the
-  // artifact but NOT declared in DEPS_NAMESPACES means a new third-party dep
-  // was added upstream and would silently not be relocated — consumers'
-  // `<newdep/...>` includes would break. Declare it once in headers-spec.js
-  // (the include classifier derives from the same list).
+  // artifact but neither declared for relocation (DEPS_NAMESPACES) nor
+  // explicitly excluded (DEPS_NAMESPACES_NOT_RELOCATED — namespaces a real
+  // consumer pod vends itself, e.g. SocketRocket) means a new third-party dep
+  // was added upstream — fail closed so a decision is made deliberately.
   const foundDepsDirs = fs
     .readdirSync(depsHeaders, {withFileTypes: true})
     .filter(e => e.isDirectory())
     .map(e => String(e.name));
   const undeclared = foundDepsDirs.filter(
-    d => !plan.depsNamespaces.includes(d),
+    d =>
+      !plan.depsNamespaces.includes(d) &&
+      !DEPS_NAMESPACES_NOT_RELOCATED.includes(d),
   );
   if (undeclared.length > 0) {
     throw new Error(
       `headers-compose: deps artifact ships undeclared namespace(s): ` +
-        `${undeclared.join(', ')}. Add them to DEPS_NAMESPACES in ` +
-        `headers-spec.js so they are relocated into ReactNativeHeaders.`,
+        `${undeclared.join(', ')}. Add them to DEPS_NAMESPACES (relocated) or ` +
+        `DEPS_NAMESPACES_NOT_RELOCATED (vended by a real pod) in headers-spec.js.`,
     );
   }
   // Hermes public headers (separate source from the deps namespaces — they

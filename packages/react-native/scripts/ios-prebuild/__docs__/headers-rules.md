@@ -356,7 +356,9 @@ These classes previously failed late (consumer CI lane) or not at all; the gate
 Proof the gate earns its keep — its FIRST run found two real shipping defects:
 the dual-identity redefinitions that became R11, and an undeclared
 `SocketRocket` namespace in the deps artifact (caught by the set-equality guard
-the moment it was added).
+the moment it was added). SocketRocket is deliberately NOT relocated
+(`DEPS_NAMESPACES_NOT_RELOCATED`): the real pod vends it, and textual copies
+collide with it under `use_frameworks` — the gate asserts its absence.
 
 ### D. Remaining silent gaps — allowlist maintenance (by design)
 

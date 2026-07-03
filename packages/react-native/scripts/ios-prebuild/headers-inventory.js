@@ -31,7 +31,10 @@
 
 const {getHeaderFilesFromPodspecs} = require('./headers');
 // headers-spec.js requires only fs/path, so this cannot cycle.
-const {DEPS_NAMESPACES} = require('./headers-spec');
+const {
+  DEPS_NAMESPACES,
+  DEPS_NAMESPACES_NOT_RELOCATED,
+} = require('./headers-spec');
 const fs = require('fs');
 const path = require('path');
 
@@ -77,7 +80,10 @@ type HeaderEntry = {
 // of truth: the spec's DEPS_NAMESPACES (the namespaces relocated into
 // ReactNativeHeaders) — a new third-party dep is declared ONCE and both the
 // include classifier and the compose step follow.
-const THIRD_PARTY_LIBS /*: Set<string> */ = new Set(DEPS_NAMESPACES);
+const THIRD_PARTY_LIBS /*: Set<string> */ = new Set([
+  ...DEPS_NAMESPACES,
+  ...DEPS_NAMESPACES_NOT_RELOCATED,
+]);
 
 // Apple SDK / platform include roots (first path segment). Includes resolving
 // here are "system": always modular or always available, never our problem.

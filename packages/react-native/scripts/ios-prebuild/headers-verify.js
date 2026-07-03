@@ -39,6 +39,7 @@
 
 const {computeInventory} = require('./headers-inventory');
 const {
+  DEPS_NAMESPACES_NOT_RELOCATED,
   planFromInventory,
   renderNamespaceModuleMap,
   renderReactModuleMap,
@@ -229,6 +230,16 @@ function verifyStructural(
   for (const ns of plan.depsNamespaces) {
     if (!fs.existsSync(path.join(rnhHeaders, ns))) {
       throw new Error(`deps namespace missing from artifact: ${ns}`);
+    }
+  }
+  // Excluded namespaces must stay ABSENT: relocating them collides with the
+  // real pod's own headers (SocketRocket / Expo use_frameworks regression).
+  for (const ns of DEPS_NAMESPACES_NOT_RELOCATED) {
+    if (fs.existsSync(path.join(rnhHeaders, ns))) {
+      throw new Error(
+        `excluded deps namespace '${ns}' found in the artifact — it must NOT ` +
+          `be relocated (a real pod vends it; textual copies collide).`,
+      );
     }
   }
   log('structural: OK (module maps + umbrellas byte-match the spec render).');

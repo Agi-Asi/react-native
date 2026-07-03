@@ -120,8 +120,19 @@ const DEPS_NAMESPACES = [
   'fmt',
   'double-conversion',
   'fast_float',
-  'SocketRocket',
 ];
+
+// Namespaces the deps artifact ships but which must NOT be relocated into
+// ReactNativeHeaders: a REAL CocoaPods pod of the same name exists in consumer
+// graphs and vends these headers itself (with its own module). Relocating
+// textual copies puts them on every pod's HEADER_SEARCH_PATHS via the
+// flattened React-Core-prebuilt/Headers and collides with the pod's own
+// headers — duplicate @interface definitions compiling the SocketRocket pod,
+// and a poisoned module graph in use_frameworks/explicit-modules apps
+// (Expo regression, 2026-07-03). The compose set-equality guard treats these
+// as declared (so only genuinely NEW namespaces fail closed), and the headers
+// gate asserts they stay ABSENT from the artifact.
+const DEPS_NAMESPACES_NOT_RELOCATED = ['SocketRocket'];
 
 // R4/R5 umbrella exclusion: C extern-inline definitions.
 const EXTERN_INLINE_RE /*: RegExp */ =
@@ -458,6 +469,7 @@ function renderNamespaceModuleMap(
 
 module.exports = {
   planFromInventory,
+  DEPS_NAMESPACES_NOT_RELOCATED,
   renderReactModuleMap,
   renderUmbrellaHeader,
   renderNamespaceModuleMap,
