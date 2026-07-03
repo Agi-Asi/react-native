@@ -135,8 +135,11 @@ module RNCoreFacades
 
             # Preserve non-code RESOURCES (privacy manifest, i18n bundles, ...). They
             # don't shadow headers, and React-Core-prebuilt doesn't vend them, so the
-            # facade must carry them or prebuilt installs lose them. Globs are made
-            # relative to the facade dir so they resolve back to the real source tree.
+            # facade must carry them or prebuilt installs lose them. The matched
+            # files are COPIED into the facade dir (like the re-exposed headers):
+            # CocoaPods file accessors only match globs against files under the pod
+            # root, so a `..`-escaping glob back into the source tree would silently
+            # match nothing and the bundles would ship empty.
             resource_bundles = derive_resource_bundles(real, podspec_dir, dir)
             spec["resource_bundles"] = resource_bundles unless resource_bundles.empty?
             resources = derive_resources(real, podspec_dir, dir)
@@ -209,16 +212,16 @@ module RNCoreFacades
     end
     private_class_method :derive_subspecs
 
-    # Effective resource_bundles of the real spec (e.g. React-Core_privacy), with
-    # globs rewritten relative to the facade dir so they point back at the real
-    # source files. Unions the `resource_bundle` (singular) and `resource_bundles`
-    # (plural) DSL forms.
+    # Effective resource_bundles of the real spec (e.g. React-Core_privacy),
+    # copied into the facade dir under resources/<bundle>/. Unions the
+    # `resource_bundle` (singular) and `resource_bundles` (plural) DSL forms.
     def self.derive_resource_bundles(real, podspec_dir, facade_dir)
         out = {}
         [real.attributes_hash["resource_bundle"], real.attributes_hash["resource_bundles"]].each do |rb|
             next unless rb.is_a?(Hash)
             rb.each do |bundle, globs|
-                out[bundle] = Array(globs).map { |g| rel_glob(g, podspec_dir, facade_dir) }
+                copied = copy_resources(Array(globs), podspec_dir, facade_dir, File.join("resources", bundle))
+                out[bundle] = copied unless copied.empty?
             end
         end
         out
@@ -248,19 +251,32 @@ module RNCoreFacades
     end
     private_class_method :copy_reexposed_headers
 
-    # Loose `resources` of the real spec, rewritten relative to the facade dir.
+    # Loose `resources` of the real spec, copied into the facade dir.
     def self.derive_resources(real, podspec_dir, facade_dir)
-        Array(real.attributes_hash["resources"]).map { |g| rel_glob(g, podspec_dir, facade_dir) }
+        copy_resources(Array(real.attributes_hash["resources"]), podspec_dir, facade_dir, "resources")
     end
     private_class_method :derive_resources
 
-    # Rewrite a glob declared relative to `podspec_dir` into one relative to
-    # `facade_dir`, so the generated facade (which lives under the app's build/)
-    # still resolves the resource in the react-native source tree.
-    def self.rel_glob(glob, podspec_dir, facade_dir)
-        require "pathname"
-        abs = File.expand_path(glob, podspec_dir)
-        Pathname.new(abs).relative_path_from(Pathname.new(facade_dir)).to_s
+    # Copies everything the resource globs match (files or whole directories,
+    # e.g. *.lproj bundles) into `<facade_dir>/<subdir>/` and returns
+    # facade-relative paths for the copies. Globs resolve against the real
+    # podspec dir. A glob that matches nothing is tolerated — the source pod
+    # would ship nothing for it either, so the facade stays equivalent.
+    # rm_rf-before-cp_r keeps the snapshot fresh across repeated `pod install`s.
+    def self.copy_resources(globs, podspec_dir, facade_dir, subdir)
+        copied = []
+        globs.each do |g|
+            matches = Dir.glob(File.expand_path(g, podspec_dir))
+            next if matches.empty?
+            dest_dir = File.join(facade_dir, subdir)
+            FileUtils.mkdir_p(dest_dir)
+            matches.each do |src|
+                FileUtils.rm_rf(File.join(dest_dir, File.basename(src)))
+                FileUtils.cp_r(src, dest_dir)
+                copied << File.join(subdir, File.basename(src))
+            end
+        end
+        copied.uniq
     end
-    private_class_method :rel_glob
+    private_class_method :copy_resources
 end

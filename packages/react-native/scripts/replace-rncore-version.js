@@ -152,37 +152,45 @@ function replaceRNCoreConfiguration(
     // it here: re-flatten the headers (identical across slices) and drop the
     // now-redundant xcframework so $(PODS_ROOT)/React-Core-prebuilt/Headers
     // keeps resolving <react/...>, <yoga/...>, etc.
+    //
+    // Fail closed when the swapped-in tarball lacks ReactNativeHeaders: the
+    // directory purge above already deleted the previous Headers/, so
+    // continuing silently would leave the injected -fmodule-map-file flag
+    // dangling and break every <react/...> include only on a config switch —
+    // with no pointer to the version-skewed artifact that caused it.
     const rnhXcfw = path.join(finalLocation, 'ReactNativeHeaders.xcframework');
-    if (fs.existsSync(rnhXcfw)) {
-      const slice = fs
-        .readdirSync(rnhXcfw, {withFileTypes: true})
-        .find(
-          dirent =>
-            dirent.isDirectory() &&
-            fs.existsSync(
-              path.join(rnhXcfw, dirent.name.toString(), 'Headers'),
-            ),
-        );
-      if (slice) {
-        const headersDest = path.join(finalLocation, 'Headers');
-        fs.rmSync(headersDest, {force: true, recursive: true});
-        const cpHeaders = spawnSync(
-          'cp',
-          [
-            '-R',
-            path.join(rnhXcfw, slice.name.toString(), 'Headers'),
-            headersDest,
-          ],
-          {stdio: 'inherit'},
-        );
-        if (cpHeaders.status !== 0) {
-          throw new Error(
-            `Flattening ReactNativeHeaders failed with exit code ${cpHeaders.status}`,
-          );
-        }
-        fs.rmSync(rnhXcfw, {force: true, recursive: true});
-      }
+    if (!fs.existsSync(rnhXcfw)) {
+      throw new Error(
+        `ReactNativeHeaders.xcframework not found in the extracted tarball at ${finalLocation}. ` +
+          'The downloaded artifact predates the headers-spec layout (or is incomplete); ' +
+          'use a prebuilt tarball matching this react-native version.',
+      );
     }
+    const slice = fs
+      .readdirSync(rnhXcfw, {withFileTypes: true})
+      .find(
+        dirent =>
+          dirent.isDirectory() &&
+          fs.existsSync(path.join(rnhXcfw, dirent.name.toString(), 'Headers')),
+      );
+    if (!slice) {
+      throw new Error(
+        `No slice with a Headers directory found inside ${rnhXcfw}.`,
+      );
+    }
+    const headersDest = path.join(finalLocation, 'Headers');
+    fs.rmSync(headersDest, {force: true, recursive: true});
+    const cpHeaders = spawnSync(
+      'cp',
+      ['-R', path.join(rnhXcfw, slice.name.toString(), 'Headers'), headersDest],
+      {stdio: 'inherit'},
+    );
+    if (cpHeaders.status !== 0) {
+      throw new Error(
+        `Flattening ReactNativeHeaders failed with exit code ${cpHeaders.status}`,
+      );
+    }
+    fs.rmSync(rnhXcfw, {force: true, recursive: true});
   } finally {
     // Clean up temp directory
     fs.rmSync(tmpDir, {force: true, recursive: true});

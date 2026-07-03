@@ -37,7 +37,7 @@ const path = require('path');
  * artifact must not be produced.
  */
 function computeSpecPlan(rnRoot /*: string */) /*: HeadersSpecPlan */ {
-  const plan = planFromInventory(computeInventory(rnRoot));
+  const plan = planFromInventory(computeInventory(rnRoot), rnRoot);
   if (plan.collisions.length > 0) {
     throw new Error(
       `headers-spec collisions (R8):\n  ${plan.collisions.join('\n  ')}`,

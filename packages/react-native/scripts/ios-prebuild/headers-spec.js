@@ -61,6 +61,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Fallback root only — inventory `source` paths are relative to the root the
+// inventory was computed from, so callers with a different tree (SPM tooling,
+// headers-inventory --root) must pass that root to planFromInventory.
 const RN_ROOT = path.join(__dirname, '..', '..');
 
 /*::
@@ -164,13 +167,13 @@ function validatePrivateReactHeaders(manifest /*: any */) /*: void */ {
   }
 }
 
-function isUmbrellaSafe(h /*: any */) /*: boolean */ {
+function isUmbrellaSafe(h /*: any */, rnRoot /*: string */) /*: boolean */ {
   if (h.bucket !== 'objc-modular-candidate' || h.naturalPath.includes('+')) {
     return false;
   }
   try {
     return !EXTERN_INLINE_RE.test(
-      fs.readFileSync(path.join(RN_ROOT, h.identities[0].source), 'utf8'),
+      fs.readFileSync(path.join(rnRoot, h.identities[0].source), 'utf8'),
     );
   } catch {
     return false;
@@ -206,8 +209,15 @@ function renderNamespaceUmbrella(
 /**
  * Computes the full layout plan from the header inventory manifest
  * (build/header-inventory.json — regenerate with header-inventory.js).
+ * `rnRoot` is the tree the inventory's relative `source` paths resolve
+ * against; defaults to the manifest's recorded root, then to the package
+ * hosting this script.
  */
-function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
+function planFromInventory(
+  manifest /*: any */,
+  rnRoot /*:: ?: string */,
+) /*: HeadersSpecPlan */ {
+  const root = rnRoot ?? manifest.root ?? RN_ROOT;
   validatePrivateReactHeaders(manifest); // R9: fail closed on allowlist drift
   const react /*: Array<SpecEntry> */ = [];
   const reactNativeHeaders /*: Array<SpecEntry> */ = [];
@@ -248,7 +258,7 @@ function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
     entryList.push({relPath, source, naturalPath: np});
 
     // R4: React umbrella membership.
-    if (np.startsWith('React/') && isUmbrellaSafe(h)) {
+    if (np.startsWith('React/') && isUmbrellaSafe(h, root)) {
       umbrella.push(np);
     }
     // R5: namespace modules (only for ReactNativeHeaders namespaces). Every
@@ -260,7 +270,7 @@ function planFromInventory(manifest /*: any */) /*: HeadersSpecPlan */ {
     // case-insensitive filesystem.
     if (entryList === reactNativeHeaders) {
       const ns = np.split('/')[0];
-      if (MODULE_IDENT_RE.test(ns) && isUmbrellaSafe(h)) {
+      if (MODULE_IDENT_RE.test(ns) && isUmbrellaSafe(h, root)) {
         if (!namespaceModules[ns]) {
           namespaceModules[ns] = [];
         }

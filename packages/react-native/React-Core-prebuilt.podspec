@@ -47,16 +47,25 @@ Pod::Spec.new do |s|
     XCFRAMEWORK_PATH="${CURRENT_PATH}/React.xcframework"
 
     # Flatten ReactNativeHeaders' headers (identical across slices) into Headers/
-    # BEFORE we sweep stray root entries into React.xcframework.
+    # BEFORE we sweep stray root entries into React.xcframework. Fail closed:
+    # a tarball without ReactNativeHeaders.xcframework (an artifact published
+    # before the headers-spec layout, or a truncated download) would otherwise
+    # yield a green install with an empty Headers/ and every <react/...> or
+    # <yoga/...> include failing much later, far from the cause.
     mkdir -p Headers
     RNH_XCFRAMEWORK_PATH=$(find "$CURRENT_PATH" -type d -name "ReactNativeHeaders.xcframework" | head -n 1)
-    if [ -n "$RNH_XCFRAMEWORK_PATH" ]; then
-      RNH_HEADERS_PATH=$(find "$RNH_XCFRAMEWORK_PATH" -type d -name "Headers" | head -n 1)
-      if [ -n "$RNH_HEADERS_PATH" ]; then
-        cp -R "$RNH_HEADERS_PATH/." Headers
-      fi
-      rm -rf "$RNH_XCFRAMEWORK_PATH"
+    if [ -z "$RNH_XCFRAMEWORK_PATH" ]; then
+      echo "[React-Core-prebuilt] ERROR: ReactNativeHeaders.xcframework not found in the prebuilt tarball." >&2
+      echo "The artifact predates the headers-spec layout or is incomplete; use a matching react-native version." >&2
+      exit 1
     fi
+    RNH_HEADERS_PATH=$(find "$RNH_XCFRAMEWORK_PATH" -type d -name "Headers" | head -n 1)
+    if [ -z "$RNH_HEADERS_PATH" ]; then
+      echo "[React-Core-prebuilt] ERROR: no Headers directory inside $RNH_XCFRAMEWORK_PATH." >&2
+      exit 1
+    fi
+    cp -R "$RNH_HEADERS_PATH/." Headers
+    rm -rf "$RNH_XCFRAMEWORK_PATH"
 
     mkdir -p "${XCFRAMEWORK_PATH}"
     find "$CURRENT_PATH" -mindepth 1 -maxdepth 1 \

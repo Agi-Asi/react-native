@@ -563,7 +563,8 @@ class ReactNativeCoreUtils
         # (`yoga`, `RCTDeprecation`, `ReactNativeHeaders_react`, ...) are modular —
         # otherwise the React framework's clang explicit-module precompile trips
         # -Wnon-modular-include-in-framework-module on `<yoga/...>` / `<react/...>`.
-        module_map_flag = " -fmodule-map-file=$(PODS_ROOT)/React-Core-prebuilt/Headers/module.modulemap"
+        # Quoted so a $(PODS_ROOT) containing spaces stays a single clang argument.
+        module_map_flag = " \"-fmodule-map-file=$(PODS_ROOT)/React-Core-prebuilt/Headers/module.modulemap\""
         ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "OTHER_CFLAGS", module_map_flag)
         ReactNativePodsUtils.add_flag_to_map_with_inheritance(attributes, "OTHER_SWIFT_FLAGS", " -Xcc" + module_map_flag)
     end
