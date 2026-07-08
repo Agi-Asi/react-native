@@ -56,6 +56,13 @@
  *     header manifest).
  * R8. Collisions are ERRORS: two different source files may never project to
  *     the same destination path.
+ * R9. Private React headers — a curated allowlist of `<React/...>` headers the
+ *     umbrella (R4) excludes (they are `+`-suffixed and/or objc-blocked) — are
+ *     added to the React framework module map so privileged consumers can reach
+ *     them. The allowlist fails closed on drift (validatePrivateReactHeaders).
+ * R10. Per-namespace umbrella headers are emitted into ReactNativeHeaders so
+ *     consumers that import a whole namespace (e.g. Expo) get one entry point;
+ *     each is derived from namespaceModules (R5) so it cannot drift.
  * R11. ONE source file, ONE content location. Some sources ship under several
  *     spellings (React/X.h + a legacy pod-namespace form like CoreModules/X.h,
  *     or a bare root alias + React_RCTAppDelegate/X.h). Under the VFS overlay

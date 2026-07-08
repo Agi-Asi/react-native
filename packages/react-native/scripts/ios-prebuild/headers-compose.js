@@ -26,9 +26,27 @@ const {
   renderReactModuleMap,
   renderUmbrellaHeader,
 } = require('./headers-spec');
-const {execSync} = require('child_process');
+const {execSync, execFileSync} = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+
+// Hash of the compose tooling itself. Folded into the freshness marker so a
+// local edit to any of these scripts (which changes the composed output)
+// forces a recompose even when the cached source xcframework is untouched —
+// the Info.plist mtime alone can't catch that. Stable across fresh checkouts
+// (content-based, not mtime-based). sha256 to avoid weak-hash lint.
+function composeToolingHash() /*: string */ {
+  const hash = crypto.createHash('sha256');
+  for (const name of [
+    'headers-inventory.js',
+    'headers-spec.js',
+    'headers-compose.js',
+  ]) {
+    hash.update(fs.readFileSync(path.join(__dirname, name)));
+  }
+  return hash.digest('hex');
+}
 
 /*:: import type {HeadersSpecPlan, SpecEntry} from './headers-spec'; */
 
@@ -38,7 +56,20 @@ const path = require('path');
  * artifact must not be produced.
  */
 function computeSpecPlan(rnRoot /*: string */) /*: HeadersSpecPlan */ {
-  const plan = planFromInventory(computeInventory(rnRoot), rnRoot);
+  const inventory = computeInventory(rnRoot);
+  // R8, part 1: two distinct sources mapping to the same natural Headers/ path.
+  // addIdentity merges these and planFromInventory keeps only identities[0], so
+  // the second source would be silently dropped. Fail closed instead.
+  if (inventory.collisions.length > 0) {
+    const detail = inventory.collisions
+      .map(c => `${c.naturalPath} <- ${c.sources.join(', ')}`)
+      .join('\n  ');
+    throw new Error(
+      `header-inventory natural-path collisions (R8):\n  ${detail}`,
+    );
+  }
+  const plan = planFromInventory(inventory, rnRoot);
+  // R8, part 2: two natural paths colliding on the same xcframework destination.
   if (plan.collisions.length > 0) {
     throw new Error(
       `headers-spec collisions (R8):\n  ${plan.collisions.join('\n  ')}`,
@@ -106,7 +137,7 @@ function emitReactFrameworkHeaders(
   for (const slice of slices) {
     const fwk = path.join(xcfwPath, slice, 'React.framework');
     fs.rmSync(path.join(fwk, 'Headers'), {recursive: true, force: true});
-    execSync(`/bin/cp -Rc "${stage}" "${path.join(fwk, 'Headers')}"`);
+    execFileSync('/bin/cp', ['-Rc', stage, path.join(fwk, 'Headers')]);
     fs.rmSync(path.join(fwk, 'Modules'), {recursive: true, force: true});
     fs.mkdirSync(path.join(fwk, 'Modules'), {recursive: true});
     fs.writeFileSync(
@@ -187,7 +218,7 @@ function buildReactNativeHeadersXcframework(
           `incomplete ReactNativeHeaders.xcframework.`,
       );
     }
-    execSync(`/bin/cp -Rc "${src}" "${path.join(stage, ns)}"`);
+    execFileSync('/bin/cp', ['-Rc', src, path.join(stage, ns)]);
   }
   // Set equality with the deps artifact: a namespace dir present in the
   // artifact but neither declared for relocation (DEPS_NAMESPACES) nor
@@ -218,10 +249,15 @@ function buildReactNativeHeadersXcframework(
   if (hermesHeaders != null) {
     const src = path.join(hermesHeaders, 'hermes');
     if (fs.existsSync(src)) {
-      execSync(`/bin/cp -Rc "${src}" "${path.join(stage, 'hermes')}"`);
+      execFileSync('/bin/cp', ['-Rc', src, path.join(stage, 'hermes')]);
       hermesFolded = true;
     } else {
-      console.warn(`headers-compose: hermes headers missing at ${src}`);
+      console.warn(
+        `headers-compose: hermes headers missing at ${src} — the composed ` +
+          'ReactNativeHeaders will NOT resolve <hermes/...>; a downstream ' +
+          'build that imports Hermes headers will fail. Ensure the hermes-ios ' +
+          "tarball's destroot/include was staged into the slot.",
+      );
     }
   }
   // R10: per-namespace umbrella headers (e.g. React_RCTAppDelegate-umbrella.h)
@@ -331,8 +367,10 @@ function ensureHeadersLayout(
   const sourceStat = fs.statSync(path.join(sourceXcfw, 'Info.plist'));
   // Fold the hermes-headers presence into the marker so a slot that gains
   // staged hermes headers (e.g. after a tooling upgrade re-downloads them)
-  // recomposes instead of reusing a hermes-less ReactNativeHeaders.
-  const marker = `${sourceXcfw}\n${sourceStat.mtimeMs}\n${hermesHeaders ?? 'no-hermes'}\n`;
+  // recomposes instead of reusing a hermes-less ReactNativeHeaders. The
+  // compose-tooling hash makes a local edit to headers-{inventory,spec,compose}
+  // recompose too (the source xcframework's Info.plist mtime can't detect that).
+  const marker = `${sourceXcfw}\n${sourceStat.mtimeMs}\n${hermesHeaders ?? 'no-hermes'}\ntooling:${composeToolingHash()}\n`;
   if (
     !force &&
     fs.existsSync(reactXcfw) &&
@@ -349,7 +387,7 @@ function ensureHeadersLayout(
   fs.rmSync(reactXcfw, {recursive: true, force: true});
   fs.rmSync(markerPath, {force: true});
   fs.mkdirSync(outDir, {recursive: true});
-  execSync(`/bin/cp -Rc "${sourceXcfw}" "${reactXcfw}"`);
+  execFileSync('/bin/cp', ['-Rc', sourceXcfw, reactXcfw]);
   fs.rmSync(path.join(reactXcfw, '_CodeSignature'), {
     recursive: true,
     force: true,

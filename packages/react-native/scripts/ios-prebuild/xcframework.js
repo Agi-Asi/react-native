@@ -18,7 +18,7 @@ const childProcess = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const {execSync} = childProcess;
+const {execSync, execFileSync} = childProcess;
 const {createLogger} = utils;
 
 const frameworkLog = createLogger('XCFramework');
@@ -125,11 +125,17 @@ function buildXCFrameworks(
     // reactnative-core artifact so the React-Core-prebuilt pod can vend both
     // (React.framework -> <React/...>, ReactNativeHeaders -> every other
     // namespace). The headers-only xcframework is a sibling of React.xcframework.
-    execSync(
-      `tar -czf ${tarFilePath} -C ${path.dirname(outputPath)} React.xcframework ${path.basename(headersXcfw)}`,
-      {
-        stdio: 'inherit',
-      },
+    execFileSync(
+      'tar',
+      [
+        '-czf',
+        tarFilePath,
+        '-C',
+        path.dirname(outputPath),
+        'React.xcframework',
+        path.basename(headersXcfw),
+      ],
+      {stdio: 'inherit'},
     );
   } catch (error) {
     frameworkLog(
@@ -148,8 +154,15 @@ function buildXCFrameworks(
   );
   frameworkLog('Creating tar file: ' + headersTarPath);
   try {
-    execSync(
-      `tar -czf ${headersTarPath} -C ${path.dirname(headersXcfw)} ReactNativeHeaders.xcframework`,
+    execFileSync(
+      'tar',
+      [
+        '-czf',
+        headersTarPath,
+        '-C',
+        path.dirname(headersXcfw),
+        'ReactNativeHeaders.xcframework',
+      ],
       {stdio: 'inherit'},
     );
   } catch (error) {

@@ -158,8 +158,30 @@ function scanHeader(text /*: string */) /*: {
   const cxxRe =
     /^\s*(namespace\s+[A-Za-z_]|template\s*<|extern\s+"C\+\+"|enum\s+class\b|constexpr\b|using\s+(namespace\s|[A-Za-z_]\w*\s*=))/;
 
+  // Track /* ... */ block comments across lines so a documentation line inside
+  // a comment (e.g. `namespace`, `template <`, `constexpr`) can't trip the C++
+  // detector below and needlessly shrink the umbrella.
+  let inBlockComment = false;
   for (const rawLine of text.split('\n')) {
-    const line = rawLine.replace(/\/\/.*$/, '');
+    let line = rawLine;
+    if (inBlockComment) {
+      const end = line.indexOf('*/');
+      if (end === -1) {
+        continue; // whole line still inside a block comment
+      }
+      line = line.slice(end + 2);
+      inBlockComment = false;
+    }
+    // Drop complete inline block comments, then line comments (which also
+    // swallow any `/*` living inside a `//` comment), then detect a block
+    // comment that opens and runs onto the next line.
+    line = line.replace(/\/\*.*?\*\//g, '');
+    line = line.replace(/\/\/.*$/, '');
+    const blockOpen = line.indexOf('/*');
+    if (blockOpen !== -1) {
+      inBlockComment = true;
+      line = line.slice(0, blockOpen);
+    }
     const cond = line.match(/^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)$/);
     if (cond) {
       const [, directive, rest] = cond;
@@ -214,9 +236,11 @@ function scanHeader(text /*: string */) /*: {
   // declaration carrying an `=` initializer. Whole-text (not per-line) so the
   // aggregate context is required, avoiding false positives on file-scope
   // definitions. Unguarded by construction (definitions can't sit under a
-  // pure `#ifdef __cplusplus` and still be the ObjC surface).
+  // pure `#ifdef __cplusplus` and still be the ObjC surface). The tag name is
+  // optional so an anonymous `typedef struct { CGFloat x = NAN; } Foo;` is
+  // caught too (a named aggregate is not required for the ObjC++ surface).
   const aggregateMemberInitRe =
-    /\b(?:struct|class)\s+[A-Za-z_]\w*[^;{}]*\{[^{}]*?\b[A-Za-z_][\w\s:<>,]*\**\s+\*?[A-Za-z_]\w*\s*=\s*[^;{}]+;/s;
+    /\b(?:struct|class)\b(?:\s+[A-Za-z_]\w*)?[^;{}]*\{[^{}]*?\b[A-Za-z_][\w\s:<>,]*\**\s+\*?[A-Za-z_]\w*\s*=\s*[^;{}]+;/s;
   if (aggregateMemberInitRe.test(text)) {
     hasUnguardedCxx = true;
   }
@@ -325,7 +349,7 @@ function buildInventory(rootFolder /*: string */) /*: {
     const headerMaps = podSpecsWithHeaderFiles[podspecPath];
     // xcframework.js and vfs.js both use the ROOT spec's name (first map) as
     // the pod folder, with the same first-occurrence '-' -> '_' replacement.
-    const podName = headerMaps[0].specName.replace('-', '_');
+    const podName = headerMaps[0].specName.replace(/-/g, '_');
 
     for (const headerMap of headerMaps) {
       for (const header of headerMap.headers) {
@@ -578,15 +602,21 @@ if (require.main === module) {
  * without going through the JSON manifest on disk (e.g. the prebuild compose
  * step feeding headers-spec.planFromInventory).
  */
-function computeInventory(
-  rootFolder /*: string */,
-) /*: {headers: Array<HeaderEntry>} */ {
-  const {entries, sourceToNatural} = buildInventory(rootFolder);
+function computeInventory(rootFolder /*: string */) /*: {
+  headers: Array<HeaderEntry>,
+  collisions: Array<{naturalPath: string, sources: Array<string>}>,
+} */ {
+  const {entries, sourceToNatural, collisions} = buildInventory(rootFolder);
   classifyEntries(entries, sourceToNatural, rootFolder);
   return {
     headers: Array.from(entries.values()).sort((a, b) =>
       a.naturalPath.localeCompare(b.naturalPath),
     ),
+    // Natural-path collisions (two distinct sources mapping to the same
+    // Headers/ path) are silently merged by addIdentity — planFromInventory
+    // only keeps identities[0].source, so the second source is dropped. Surface
+    // them so the compose gate can fail closed (R8) instead of regressing.
+    collisions,
   };
 }
 
