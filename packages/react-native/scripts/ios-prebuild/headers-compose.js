@@ -26,7 +26,7 @@ const {
   renderReactModuleMap,
   renderUmbrellaHeader,
 } = require('./headers-spec');
-const {execSync, execFileSync} = require('child_process');
+const {execFileSync, execSync} = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
