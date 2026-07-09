@@ -31,6 +31,10 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
+// APFS clonefile (-c) is a macOS-only cp flag; plain -R elsewhere (Linux CI
+// exercises these paths through the jest integration tests).
+const CP_FLAGS = process.platform === 'darwin' ? '-Rc' : '-R';
+
 // Hash of the compose tooling itself. Folded into the freshness marker so a
 // local edit to any of these scripts (which changes the composed output)
 // forces a recompose even when the cached source xcframework is untouched —
@@ -137,7 +141,7 @@ function emitReactFrameworkHeaders(
   for (const slice of slices) {
     const fwk = path.join(xcfwPath, slice, 'React.framework');
     fs.rmSync(path.join(fwk, 'Headers'), {recursive: true, force: true});
-    execFileSync('/bin/cp', ['-Rc', stage, path.join(fwk, 'Headers')]);
+    execFileSync('/bin/cp', [CP_FLAGS, stage, path.join(fwk, 'Headers')]);
     fs.rmSync(path.join(fwk, 'Modules'), {recursive: true, force: true});
     fs.mkdirSync(path.join(fwk, 'Modules'), {recursive: true});
     fs.writeFileSync(
@@ -218,7 +222,7 @@ function buildReactNativeHeadersXcframework(
           `incomplete ReactNativeHeaders.xcframework.`,
       );
     }
-    execFileSync('/bin/cp', ['-Rc', src, path.join(stage, ns)]);
+    execFileSync('/bin/cp', [CP_FLAGS, src, path.join(stage, ns)]);
   }
   // Set equality with the deps artifact: a namespace dir present in the
   // artifact but neither declared for relocation (DEPS_NAMESPACES) nor
@@ -249,7 +253,7 @@ function buildReactNativeHeadersXcframework(
   if (hermesHeaders != null) {
     const src = path.join(hermesHeaders, 'hermes');
     if (fs.existsSync(src)) {
-      execFileSync('/bin/cp', ['-Rc', src, path.join(stage, 'hermes')]);
+      execFileSync('/bin/cp', [CP_FLAGS, src, path.join(stage, 'hermes')]);
       hermesFolded = true;
     } else {
       console.warn(
@@ -387,7 +391,7 @@ function ensureHeadersLayout(
   fs.rmSync(reactXcfw, {recursive: true, force: true});
   fs.rmSync(markerPath, {force: true});
   fs.mkdirSync(outDir, {recursive: true});
-  execFileSync('/bin/cp', ['-Rc', sourceXcfw, reactXcfw]);
+  execFileSync('/bin/cp', [CP_FLAGS, sourceXcfw, reactXcfw]);
   fs.rmSync(path.join(reactXcfw, '_CodeSignature'), {
     recursive: true,
     force: true,
