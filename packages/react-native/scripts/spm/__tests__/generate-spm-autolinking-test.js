@@ -48,7 +48,7 @@ describe('reactDescriptor (plugin context.react)', () => {
     // Full product set, incl. ReactAppHeaders in the SEPARATE React-GeneratedCode
     // package (the entry a hand-rolled plugin would miss).
     expect(d.products).toEqual([
-      {name: 'ReactNative', package: 'ReactNative'},
+      {name: 'ReactHeaders', package: 'ReactNative'},
       {name: 'ReactNativeHeaders', package: 'ReactNative'},
       {name: 'ReactNativeDependenciesHeaders', package: 'ReactNative'},
       {name: 'ReactAppHeaders', package: 'React-GeneratedCode'},
@@ -62,7 +62,7 @@ describe('reactDescriptor (plugin context.react)', () => {
       false,
     );
     expect(d.products).toEqual([
-      {name: 'ReactNative', package: 'ReactNative'},
+      {name: 'ReactHeaders', package: 'ReactNative'},
       {name: 'ReactNativeHeaders', package: 'ReactNative'},
       {name: 'ReactNativeDependenciesHeaders', package: 'ReactNative'},
     ]);
@@ -184,9 +184,9 @@ describe('generateAutolinkedPackageSwift (aggregator)', () => {
     expect(result).toMatch(
       /name: "ScreenshotManager",[\s\S]*?path: "sources\/ScreenshotManager"/,
     );
-    // Inline target depends on the ReactNative product
+    // Inline target depends on the invariant React compile product.
     expect(result).toMatch(
-      /name: "ScreenshotManager",[\s\S]*?\.product\(name: "ReactNative", package: "ReactNative"\)/,
+      /name: "ScreenshotManager",[\s\S]*?\.product\(name: "ReactHeaders", package: "ReactNative"\)/,
     );
     // Inline targets resolve headers via product deps — no -I flags, no VFS.
     expect(result).toContain(
@@ -289,7 +289,7 @@ describe('generateSynthPackageSwift', () => {
       '.package(name: "React-GeneratedCode", path: "../../../ios")',
     );
     expect(result).toContain(
-      '.product(name: "ReactNative", package: "ReactNative")',
+      '.product(name: "ReactHeaders", package: "ReactNative")',
     );
     // Fully declarative — no runtime discovery, no Foundation import.
     expect(result).not.toContain('import Foundation');
@@ -1116,15 +1116,15 @@ describe('main() — autolinking plugin host exemption', () => {
 });
 
 // ---------------------------------------------------------------------------
-// main() — plugin flavoredArtifacts sidecar
+// main() — plugin flavoredFrameworks sidecar
 //
-// Both plugin sidecars (.spm-plugin-flavored-artifacts.json, consumed by the
-// build-time swap-flavor pass, and .spm-plugin-generated-sources.json,
-// consumed by the injector) are ALWAYS rewritten — `[]` when no plugin
+// Both plugin sidecars (.spm-plugin-flavored-frameworks.json, consumed by
+// artifact preparation, and .spm-plugin-generated-sources.json, consumed by
+// the injector) are ALWAYS rewritten — `[]` when no plugin
 // declares any — so removing a plugin clears stale entries.
 // ---------------------------------------------------------------------------
 
-describe('main() — flavoredArtifacts sidecar', () => {
+describe('main() — flavoredFrameworks sidecar', () => {
   let created = [];
   let spies = [];
 
@@ -1146,7 +1146,7 @@ describe('main() — flavoredArtifacts sidecar', () => {
       'build',
       'generated',
       'autolinking',
-      '.spm-plugin-flavored-artifacts.json',
+      '.spm-plugin-flavored-frameworks.json',
     );
 
   function scaffold(autolinkingDeps) {
@@ -1184,17 +1184,14 @@ describe('main() — flavoredArtifacts sidecar', () => {
   it('writes [] when no plugin declares flavored artifacts (clears stale entries)', () => {
     const {appRoot, rnRoot} = scaffold({});
     // Pre-seed a stale sidecar to prove it is overwritten, not left alone.
-    fs.writeFileSync(
-      sidecarPath(appRoot),
-      JSON.stringify([{name: 'Stale', link: '/x', flavors: {}}]),
-    );
+    fs.writeFileSync(sidecarPath(appRoot), JSON.stringify([{id: 'stale'}]));
     main(['--app-root', appRoot, '--react-native-root', rnRoot]);
     expect(JSON.parse(fs.readFileSync(sidecarPath(appRoot), 'utf8'))).toEqual(
       [],
     );
   });
 
-  it('records a plugin-declared flavored artifact to the sidecar', () => {
+  it('records a plugin-declared flavored framework to the sidecar', () => {
     const {appRoot, rnRoot} = scaffold({
       expo: {
         root: path.join('__EXPO__'),
@@ -1227,9 +1224,10 @@ describe('main() — flavoredArtifacts sidecar', () => {
         '  return {\n' +
         "    packageDependencies: [{name: 'ExpoModulesCore', path: '../../../../node_modules/expo/ios'}],\n" +
         "    productDependencies: [{name: 'ExpoModulesCore', package: 'ExpoModulesCore'}],\n" +
-        '    flavoredArtifacts: [{\n' +
-        "      name: 'ExpoModulesCore',\n" +
-        "      link: '/abs/ExpoModulesCore/artifacts/ExpoModulesCore.xcframework',\n" +
+        '    flavoredFrameworks: [{\n' +
+        "      id: 'expo-modules-core',\n" +
+        "      frameworkName: 'ExpoModulesCore',\n" +
+        "      linkage: 'dynamic',\n" +
         "      flavors: {debug: '/abs/debug/ExpoModulesCore.xcframework', release: '/abs/release/ExpoModulesCore.xcframework'},\n" +
         '    }],\n' +
         '  };\n' +
@@ -1240,8 +1238,9 @@ describe('main() — flavoredArtifacts sidecar', () => {
 
     expect(JSON.parse(fs.readFileSync(sidecarPath(appRoot), 'utf8'))).toEqual([
       {
-        name: 'ExpoModulesCore',
-        link: '/abs/ExpoModulesCore/artifacts/ExpoModulesCore.xcframework',
+        id: 'expo-modules-core',
+        frameworkName: 'ExpoModulesCore',
+        linkage: 'dynamic',
         flavors: {
           debug: '/abs/debug/ExpoModulesCore.xcframework',
           release: '/abs/release/ExpoModulesCore.xcframework',

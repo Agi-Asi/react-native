@@ -35,6 +35,34 @@ const RN_PATH = '../node_modules/react-native';
 // a symlinked react-native would resolve to the wrong dir at build time).
 const TEST_HERMES_CLI_PATH =
   '/abs/node_modules/hermes-compiler/hermesc/osx-bin/hermesc';
+const TEST_FRAMEWORKS = [
+  {
+    id: 'react',
+    frameworkName: 'React',
+    executableName: 'React',
+    artifactRelativePath: 'React.xcframework',
+    slices: [
+      {
+        sdk: 'iphoneos*',
+        platform: 'ios',
+        variant: null,
+        architectures: ['arm64'],
+        libraryIdentifier: 'ios-arm64',
+        libraryPath: 'React.framework',
+        binaryPath: 'React.framework/React',
+      },
+      {
+        sdk: 'iphonesimulator*',
+        platform: 'ios',
+        variant: 'simulator',
+        architectures: ['arm64', 'x86_64'],
+        libraryIdentifier: 'ios-arm64_x86_64-simulator',
+        libraryPath: 'React.framework',
+        binaryPath: 'React.framework/React',
+      },
+    ],
+  },
+];
 
 function inject(
   text,
@@ -57,6 +85,7 @@ function inject(
     remote,
     hermesCliPath,
     generatedSources,
+    TEST_FRAMEWORKS,
   );
 }
 
@@ -129,7 +158,8 @@ describe('injectSpmIntoPbxproj — Tier 1 (SPM graph)', () => {
     expect(text.match(/isa = XCSwiftPackageProductDependency;/g)).toHaveLength(
       6,
     );
-    expect(text).toContain('productName = ReactNative');
+    expect(text).toContain('productName = ReactHeaders');
+    expect(text).not.toContain('productName = ReactNative;');
     expect(text).toContain('productName = Autolinked');
     expect(text).toContain('productName = ReactCodegen');
   });
@@ -139,7 +169,7 @@ describe('injectSpmIntoPbxproj — Tier 1 (SPM graph)', () => {
     expect(text).toMatch(/packageReferences = \(/);
     expect(text).toMatch(/packageProductDependencies = \(/);
     // Product build files land in the Frameworks phase.
-    expect(text).toContain('ReactNative in Frameworks');
+    expect(text).toContain('ReactHeaders in Frameworks');
   });
 
   it('uses remote package references in remote mode', () => {
@@ -165,9 +195,7 @@ describe('injectSpmIntoPbxproj — Tier 2 (build settings + phase)', () => {
     const {text} = inject(PLAIN);
     expect(text.match(/-ObjC/g)).toHaveLength(2);
     expect(text.match(/REACT_NATIVE_PATH = /g)).toHaveLength(2);
-    expect(text).toContain(
-      'fmodule-map-file=$(BUILT_PRODUCTS_DIR)/React.framework',
-    );
+    expect(text).not.toContain('fmodule-map-file=');
     expect(text).toContain('build/generated/autolinking/headers');
     expect(text.match(/CLANG_CXX_LANGUAGE_STANDARD = "c\+\+20"/g)).toHaveLength(
       2,
@@ -176,6 +204,11 @@ describe('injectSpmIntoPbxproj — Tier 2 (build settings + phase)', () => {
     // package (no hermes-engine pod under SPM), injected into both configs.
     expect(text.match(/HERMES_CLI_PATH = /g)).toHaveLength(2);
     expect(text).toContain(TEST_HERMES_CLI_PATH);
+    expect(text).toContain('RN_SPM_FLAVOR = debug');
+    expect(text).toContain('RN_SPM_FLAVOR = release');
+    expect(text).toContain('RN_SPM_REACT_BINARY[sdk=iphoneos*]');
+    expect(text).toContain('RN_SPM_REACT_BINARY[sdk=iphonesimulator*]');
+    expect(text).toContain('$(RN_SPM_REACT_BINARY)');
   });
 
   it('omits HERMES_CLI_PATH when hermesc could not be resolved', () => {
@@ -194,53 +227,21 @@ describe('injectSpmIntoPbxproj — Tier 2 (build settings + phase)', () => {
     expect(syncIdx).toBeLessThan(sourcesIdx);
   });
 
-  it('does NOT append a Fix SPM Embedded Flavor phase (RN never writes the .app)', () => {
+  it('adds one generated embed phase immediately after Frameworks', () => {
     const {text} = inject(PLAIN);
     expect(text).not.toContain('Fix SPM Embedded Flavor');
     const bp = text.slice(text.indexOf('buildPhases = ('));
     const arr = bp.slice(0, bp.indexOf(');'));
     const comments = [...arr.matchAll(/\/\* ([^*]+) \*\//g)].map(m => m[1]);
     expect(comments[0]).toBe('Sync SPM Autolinking'); // prepended, first
-    expect(comments).not.toContain('Fix SPM Embedded Flavor');
-  });
-
-  it('MIGRATES away an existing Fix SPM Embedded Flavor phase on re-injection (object + membership)', () => {
-    const {namespacedUUID} = require('../spm-pbxproj');
-    const {text: first} = inject(PLAIN);
-    const plan = planInjection(PLAIN, {});
-    const legacyUuid = namespacedUUID(
-      plan.rootUuid,
-      'PBXShellScriptBuildPhase',
-      'FixEmbeddedFlavor',
+    expect(comments.indexOf('Embed React Native Flavored Frameworks')).toBe(
+      comments.indexOf('Frameworks') + 1,
     );
-    // Splice a legacy phase object + its buildPhases membership back in, as an
-    // app injected by an older RN would have.
-    const withObject = first.replace(
-      '/* End PBXShellScriptBuildPhase section */',
-      `\t\t${legacyUuid} /* Fix SPM Embedded Flavor */ = {\n\t\t\tisa = PBXShellScriptBuildPhase;\n\t\t\tname = "Fix SPM Embedded Flavor";\n\t\t\tshellScript = "echo legacy";\n\t\t};\n/* End PBXShellScriptBuildPhase section */`,
+    expect(text).toContain('$(SRCROOT)/build/xcframeworks/.artifact-stamp');
+    expect(text).toContain('$(RN_SPM_REACT_FRAMEWORK)');
+    expect(text).toContain(
+      '$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/React.framework',
     );
-    const withLegacy = withObject.replace(
-      /(buildPhases = \([\s\S]*?)(\n\t\t\t\);)/,
-      `$1\n\t\t\t\t${legacyUuid} /* Fix SPM Embedded Flavor */,$2`,
-    );
-    expect(withLegacy).toContain('Fix SPM Embedded Flavor');
-
-    const plan2 = planInjection(withLegacy, {});
-    const {text: healed} = injectSpmIntoPbxproj(
-      withLegacy,
-      {
-        rootUuid: plan2.rootUuid,
-        targetUuid: plan2.target.uuid,
-        configUuids: plan2.configUuids,
-        frameworksPhaseUuid: plan2.frameworksPhaseUuid,
-        sourcesPhaseUuid: plan2.sourcesPhaseUuid,
-      },
-      RN_PATH,
-      null,
-    );
-    expect(healed).not.toContain('Fix SPM Embedded Flavor');
-    expect(healed).not.toContain(legacyUuid);
-    expect(isBalanced(healed)).toBe(true);
   });
 });
 
@@ -305,6 +306,7 @@ describe('injectSpmIntoPbxproj — Tier 3 (plugin generated sources)', () => {
       null,
       null,
       [PROVIDER_SOURCE],
+      TEST_FRAMEWORKS,
     ).text;
     expect(second).toBe(first);
   });
@@ -344,6 +346,7 @@ describe('injectSpmIntoPbxproj — Tier 3 (plugin generated sources)', () => {
       null,
       null,
       [PROVIDER_SOURCE],
+      TEST_FRAMEWORKS,
     );
     const logged = spy.mock.calls.map(c => c[0]).join('\n');
     spy.mockRestore();
@@ -352,7 +355,7 @@ describe('injectSpmIntoPbxproj — Tier 3 (plugin generated sources)', () => {
     // No generated source wired, but the SPM graph injection still happened.
     expect(generatedSourceUuids).toEqual({});
     expect(text).not.toContain('SPM Generated Sources');
-    expect(text).toContain('productName = ReactNative');
+    expect(text).toContain('productName = ReactHeaders');
   });
 });
 
@@ -376,6 +379,9 @@ describe('injectSpmIntoPbxproj — invariants', () => {
       },
       RN_PATH,
       null,
+      null,
+      [],
+      TEST_FRAMEWORKS,
     ).text;
     expect(second).toBe(first);
   });
@@ -388,9 +394,10 @@ describe('injectSpmIntoPbxproj — invariants', () => {
       expect(text).toContain(line);
     }
     const added = text.split('\n').length - PLAIN.split('\n').length;
-    // Sanity bound: the SPM graph + settings + phase is well under 120 lines.
+    // Sanity bound: the complete SPM graph + conditional settings + phases is
+    // still a compact additive transform.
     expect(added).toBeGreaterThan(0);
-    expect(added).toBeLessThan(120);
+    expect(added).toBeLessThan(220);
   });
 
   it('refreshes a stale shellScript on re-injection', () => {
@@ -413,6 +420,9 @@ describe('injectSpmIntoPbxproj — invariants', () => {
       },
       RN_PATH,
       null,
+      null,
+      [],
+      TEST_FRAMEWORKS,
     ).text;
     // The stale marker is gone and the current script is restored.
     expect(second).not.toContain('STALE_OLD_SYNC_COMMAND');

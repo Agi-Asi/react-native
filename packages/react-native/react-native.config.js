@@ -125,10 +125,6 @@ const spmCommand /*: Command */ = {
         'React Native version (e.g. 0.80.0). Defaults to the version in node_modules/react-native/package.json.',
     },
     {
-      name: '--flavor <string>',
-      description: 'Artifact flavor: debug or release.',
-    },
-    {
       name: '--yes',
       description: 'Skip the dirty-pbxproj confirmation prompt.',
     },
@@ -152,8 +148,7 @@ const spmCommand /*: Command */ = {
     {
       name: '--artifacts <path>',
       description:
-        '[advanced] Local artifact source: a .xcframework file (used directly, ' +
-        'no download) or a directory (cache dir to read/download into).',
+        '[advanced] Local artifact root containing complete debug/ and release/ slots.',
     },
     {
       name: '--download <string>',
@@ -172,7 +167,6 @@ const spmCommand /*: Command */ = {
     }
     const stringOpts /*: Array<[string, string]> */ = [
       ['version', '--version'],
-      ['flavor', '--flavor'],
       ['productName', '--product-name'],
       ['xcodeproj', '--xcodeproj'],
       ['artifacts', '--artifacts'],

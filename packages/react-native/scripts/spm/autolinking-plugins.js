@@ -39,7 +39,7 @@
  *
  *     module.exports = function plugin(context) {
  *       // context: {appRoot, projectRoot, reactNativeRoot, autolinking,
- *       //           outputDir, flavor, react}
+ *       //           outputDir, react}
  *       // context.react (?ReactDescriptor): how to depend on React —
  *       //   {packageRef, products}. packageRef is local ({name, path (absolute),
  *       //   relPath}) or remote ({name, url, version}); products is the set RN
@@ -58,11 +58,10 @@
  *         // target (PBXFileReference + Sources-phase entry), marker-tracked
  *         // so deinit reverts and update reconciles.
  *         generatedSources: [{path}],
- *         // Precompiled xcframeworks that come in debug/release flavor pairs.
- *         // `link` is a plugin-owned stable symlink its binaryTarget references;
- *         // RN's build-time swap-flavor repoints it per $CONFIGURATION. Recorded
- *         // to `.spm-plugin-flavored-artifacts.json` and consumed there.
- *         flavoredArtifacts: [{name, link, flavors: {debug?, release?}}],
+ *         // Precompiled dynamic frameworks selected and embedded by RN outside
+ *         // the SwiftPM graph. Both flavors are mandatory.
+ *         flavoredFrameworks: [{id, frameworkName, linkage: 'dynamic',
+ *           flavors: {debug, release}}],
  *         // Absolute paths (dirs OR files) the Xcode auto-sync build phase
  *         // should watch for staleness — e.g. the plugin dep's own
  *         // `Package.swift`, `expo-module.config.json`, and per-module
@@ -167,12 +166,13 @@ function invokePlugins(
     [];
   const productDependencies /*: Array<{name: string, package: string}> */ = [];
   const generatedSources /*: Array<{path: string}> */ = [];
-  const flavoredArtifacts /*: Array<{name: string, link: string, flavors: {debug?: string, release?: string}}> */ =
+  const flavoredFrameworks /*: Array<{id: string, frameworkName: string, linkage: 'dynamic', flavors: {debug: string, release: string}}> */ =
     [];
   const watchPaths /*: Array<string> */ = [];
   const seenPackages /*: Set<string> */ = new Set();
   const seenProducts /*: Set<string> */ = new Set();
-  const seenArtifacts /*: Set<string> */ = new Set();
+  const seenFrameworkIds /*: Set<string> */ = new Set();
+  const seenFrameworkNames /*: Set<string> */ = new Set();
 
   for (const {depName, pluginPath, plugin} of plugins) {
     let result /*: unknown */;
@@ -200,19 +200,15 @@ function invokePlugins(
     // $FlowFixMe[incompatible-use]
     const srcs = result.generatedSources ?? [];
     // $FlowFixMe[incompatible-use]
-    const rawArts = result.flavoredArtifacts ?? [];
+    const rawFrameworks = result.flavoredFrameworks ?? [];
     // $FlowFixMe[incompatible-use]
     const rawWatch = result.watchPaths ?? [];
-    // Never let a malformed flavoredArtifacts break the build — a non-array
-    // (e.g. an object) would make the drop-loop below throw. Warn and ignore.
-    if (!Array.isArray(rawArts)) {
-      logger.warn(
-        `react-native spm: '${depName}' returned a non-array flavoredArtifacts ` +
-          `— ignoring it.`,
+    if (!Array.isArray(rawFrameworks)) {
+      throw new Error(
+        `react-native spm: '${depName}' returned a non-array flavoredFrameworks.`,
       );
     }
-    const arts = Array.isArray(rawArts) ? rawArts : [];
-    // Same as flavoredArtifacts: watch paths are best-effort staleness hints, so
+    // Watch paths are best-effort staleness hints, so
     // a non-array is ignored (warn, never fatal).
     if (!Array.isArray(rawWatch)) {
       logger.warn(
@@ -262,41 +258,50 @@ function invokePlugins(
       }
       generatedSources.push(s);
     }
-    // flavoredArtifacts are DROPPED (with a warning), not fatal: they're an
-    // optional Preview capability the build shouldn't break over, and a
-    // malformed entry only means one plugin framework won't flavor-swap.
-    for (const a of arts) {
-      const flavorsOk =
-        a != null &&
-        a.flavors != null &&
-        typeof a.flavors === 'object' &&
-        // $FlowFixMe[incompatible-use] dynamic shape, validated here
-        Object.values(a.flavors).every(v => typeof v === 'string');
+    for (const framework of rawFrameworks) {
       if (
-        a == null ||
-        typeof a.name !== 'string' ||
-        a.name.length === 0 ||
-        typeof a.link !== 'string' ||
-        a.link.length === 0 ||
-        !flavorsOk
+        framework == null ||
+        typeof framework.id !== 'string' ||
+        !/^[A-Za-z0-9_.-]+$/.test(framework.id) ||
+        typeof framework.frameworkName !== 'string' ||
+        framework.frameworkName.length === 0 ||
+        framework.linkage !== 'dynamic' ||
+        framework.flavors == null ||
+        typeof framework.flavors.debug !== 'string' ||
+        typeof framework.flavors.release !== 'string' ||
+        !path.isAbsolute(framework.flavors.debug) ||
+        !path.isAbsolute(framework.flavors.release)
       ) {
-        logger.warn(
-          `react-native spm: '${depName}' returned an invalid flavoredArtifact ` +
-            `(need {name, link} non-empty strings and flavors as an object of ` +
-            `string paths) — dropping it.`,
+        throw new Error(
+          `react-native spm: '${depName}' returned an invalid flavoredFramework ` +
+            '(need {id, frameworkName, linkage: "dynamic", flavors: ' +
+            '{debug, release}} with absolute flavor paths).',
         );
-        continue;
       }
-      // Dedupe by name so two plugins declaring the same artifact don't
-      // double-swap (mirrors the package/product dedupe).
-      if (seenArtifacts.has(a.name)) {
-        continue;
+      if (seenFrameworkIds.has(framework.id)) {
+        throw new Error(
+          `react-native spm: duplicate flavored framework id '${framework.id}'.`,
+        );
       }
-      seenArtifacts.add(a.name);
-      flavoredArtifacts.push({name: a.name, link: a.link, flavors: a.flavors});
+      if (seenFrameworkNames.has(framework.frameworkName)) {
+        throw new Error(
+          `react-native spm: multiple plugins embed '${framework.frameworkName}.framework'.`,
+        );
+      }
+      seenFrameworkIds.add(framework.id);
+      seenFrameworkNames.add(framework.frameworkName);
+      flavoredFrameworks.push({
+        id: framework.id,
+        frameworkName: framework.frameworkName,
+        linkage: 'dynamic',
+        flavors: {
+          debug: framework.flavors.debug,
+          release: framework.flavors.release,
+        },
+      });
     }
-    // watchPaths are DROPPED (with a warning), not fatal — like flavoredArtifacts,
-    // they're an optional capability. A non-string, empty, or relative entry only
+    // watchPaths are dropped (with a warning), not fatal. A non-string, empty,
+    // or relative entry only
     // means one staleness input is missed, not a broken build. Absolute-only so
     // the generated phase (which has no cwd context) can test them directly.
     for (const w of watch) {
@@ -315,7 +320,7 @@ function invokePlugins(
     packageDependencies,
     productDependencies,
     generatedSources,
-    flavoredArtifacts,
+    flavoredFrameworks,
     watchPaths,
   };
 }

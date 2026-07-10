@@ -35,6 +35,13 @@ function scaffoldApp() {
   fs.writeFileSync(path.join(xcodeprojPath, 'project.pbxproj'), PLAIN, 'utf8');
   const rnRoot = path.join(appRoot, 'node_modules', 'react-native');
   fs.mkdirSync(rnRoot, {recursive: true});
+  const artifactRoot = path.join(appRoot, 'build', 'xcframeworks');
+  fs.mkdirSync(artifactRoot, {recursive: true});
+  fs.writeFileSync(
+    path.join(artifactRoot, 'flavored-frameworks.json'),
+    JSON.stringify({version: 1, frameworks: []}),
+  );
+  fs.writeFileSync(path.join(artifactRoot, '.artifact-stamp'), 'test\n');
   return {appRoot, xcodeprojPath, rnRoot};
 }
 

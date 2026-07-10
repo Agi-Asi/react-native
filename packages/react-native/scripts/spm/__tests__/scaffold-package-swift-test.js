@@ -559,7 +559,7 @@ describe('emitScaffoldedPackageSwift', () => {
       '.package(name: "React-GeneratedCode", path: "../../ios/build/generated/ios")',
     );
     expect(out).toContain(
-      '.product(name: "ReactNative", package: "ReactNative")',
+      '.product(name: "ReactHeaders", package: "ReactNative")',
     );
   });
 
@@ -584,7 +584,7 @@ describe('emitScaffoldedPackageSwift', () => {
       '.package(url: "https://github.com/facebook/react-native-apple", exact: "0.87.0")',
     );
     expect(out).toContain(
-      '.product(name: "ReactNative", package: "react-native-apple")',
+      '.product(name: "ReactHeaders", package: "react-native-apple")',
     );
     expect(out).not.toContain('build/xcframeworks');
   });

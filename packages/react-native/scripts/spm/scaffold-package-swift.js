@@ -141,8 +141,8 @@ const SCAFFOLD_PREFIX_HEADER_CONTENTS = `// AUTO-SCAFFOLDED by react-native spm 
 const NEVER_SCAFFOLD /*: ReadonlySet<string> */ = new Set(['react-native']);
 
 // React-core / React-Fabric / etc. dependency names collapse to a single
-// `.product(name: "ReactNative", package: "ReactNative")` reference because
-// the prebuilt React.xcframework bundles them all under one product. This
+// invariant React header-product set. The app target links the prebuilt
+// runtime frameworks outside SwiftPM. This
 // list matches what `install_modules_dependencies(s)` materializes plus
 // common podspec hand-rolled additions.
 const REACT_CORE_DEP_PREFIXES = [
@@ -317,7 +317,7 @@ function translatePodspecToSpmTarget(
   }
 
   // Bucket dependencies. React-Core / React-jsi / RCT-Folly / glog etc. ALL
-  // collapse to a single `.product(name: "ReactNative", package: "ReactNative")`
+  // collapse to the invariant React header products
   // reference because they're bundled in the prebuilt React.xcframework.
   // Sibling RN libs (autolinked or self-managed deps) flow through the
   // existing spm-deps mechanism. Unknown names are dropped with a warning.
@@ -675,7 +675,7 @@ function emitScaffoldedPackageSwift(
     packageDeps.push(
       `.package(name: "React-GeneratedCode", path: "${codegenDir}")`,
     );
-    targetDeps.push(`.product(name: "ReactNative", package: "${rnLabel}")`);
+    targetDeps.push(`.product(name: "ReactHeaders", package: "${rnLabel}")`);
     targetDeps.push(
       `.product(name: "ReactNativeHeaders", package: "${rnLabel}")`,
     );

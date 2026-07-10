@@ -12,8 +12,8 @@
 
 /**
  * sync-spm-autolinking.js – Lightweight script invoked by the Xcode pre-build
- * phase to re-run autolinking (step 2) and package generation (step 4) when
- * dependency inputs have changed.
+ * phase to re-run invariant codegen and autolinking output when dependency
+ * inputs have changed.
  *
  * Usage (called from the Xcode build phase shell script):
  *   node sync-spm-autolinking.js --app-root <path> --react-native-root <path>
@@ -29,32 +29,22 @@
  *      replacing codegen's mis-rooted default (done immediately, before any
  *      step below that can throw — see the failure-atomicity comment at the
  *      call site)
- *   2. Ensures xcframework artifacts are downloaded (auto-heals fresh clones)
- *   3. Calls generate-spm-autolinking.js → build/generated/autolinking/Package.swift
- *   4. Calls generate-spm-package.js → build/xcframeworks/Package.swift + symlinks
- *   5. Rebuilds the generated-headers farm
- *   6. Writes build/generated/autolinking/.spm-sync-stamp
+ *   2. Calls generate-spm-autolinking.js → build/generated/autolinking/Package.swift
+ *   3. Rebuilds the generated-headers farm
+ *   4. Writes build/generated/autolinking/.spm-sync-stamp
+ *
+ * Runtime frameworks are deliberately not downloaded or regenerated from an
+ * Xcode build. `spm add` / `spm update` own the immutable dual-flavor slots and
+ * the app target's linker/embed configuration.
  */
 
-const {
-  main: downloadArtifacts,
-  resolveCacheSlotVersion,
-} = require('./download-spm-artifacts');
 const {main: generateAutolinking} = require('./generate-spm-autolinking');
-const {main: generatePackage} = require('./generate-spm-package');
-const {readArtifactsVersionOverride} = require('./generate-spm-xcodeproj');
 const {
   RemoteVersionError,
   buildPerAppHeaderTree,
-  defaultCacheDir,
-  displayPath,
   findProjectRoot,
-  flavorFromConfiguration,
   installSpmCodegenTemplate,
   makeLogger,
-  readFlavorPin,
-  readPackageJson,
-  remotePackageConfig,
   runCodegenAndInstallTemplate,
 } = require('./spm-utils');
 const fs = require('fs');
@@ -63,64 +53,16 @@ const yargs = require('yargs');
 
 const {log} = makeLogger('sync-spm-autolinking');
 
-/**
- * Pure decision logic for a sync run. Given whether the app is in remote-SPM
- * mode and whether a local artifacts cache is already present, decide which
- * side-effecting steps the sync should perform.
- *
- *   - Remote mode: SPM resolves artifacts itself — never download, never
- *     regenerate the local xcframeworks sub-package.
- *   - Local mode: regenerate the sub-package always; download only when the
- *     cache slot isn't populated yet.
- */
-function decideSyncPlan(
-  remote /*: unknown */,
-  hasCachedArtifacts /*: boolean */,
-) /*: {isRemote: boolean, shouldDownload: boolean, shouldGeneratePackage: boolean} */ {
-  const isRemote = remote != null;
-  return {
-    isRemote,
-    shouldDownload: !isRemote && !hasCachedArtifacts,
-    shouldGeneratePackage: !isRemote,
-  };
-}
-
-/**
- * The flavor a prior `spm add`/sync pinned this app to, read from the
- * `<appRoot>/build/xcframeworks/React.xcframework` slot symlink's parent-dir
- * segment (`.../<version>/<flavor>/React.xcframework`). Thin re-export of
- * spm-utils' readFlavorPin (kept under this name for back-compat / the
- * existing test suite): null when no pin exists yet (fresh app) or the
- * segment isn't recognized — callers decide the fallback. Preserving an
- * existing pin stops a Release-pinned app's sync from stomping it back to
- * debug (the build-time swap-flavor then still flips per $CONFIGURATION on
- * top of this).
- */
-function deriveFlavorFromPin(
-  appRoot /*: string */,
-) /*: 'debug' | 'release' | null */ {
-  return readFlavorPin(appRoot);
-}
-
 // Collaborators are injected (with these real implementations as defaults) so
 // main() can be exercised end-to-end in tests without mocking the module
 // system. Tests pass fakes that record calls and point defaultCacheDir at a
 // tempdir; everything fs-based runs for real against that tempdir.
 const defaultDeps = {
   runCodegenAndInstallTemplate,
-  readPackageJson,
-  resolveCacheSlotVersion,
-  defaultCacheDir,
-  remotePackageConfig,
-  downloadArtifacts,
   generateAutolinking,
-  generatePackage,
   installSpmCodegenTemplate,
   buildPerAppHeaderTree,
   findProjectRoot,
-  deriveFlavorFromPin,
-  flavorFromConfiguration,
-  readArtifactsVersionOverride,
 };
 
 async function main(
@@ -172,95 +114,18 @@ async function main(
   // later throw can never leave that broken manifest in place.
   deps.installSpmCodegenTemplate(appRoot, reactNativeRoot, {log});
 
-  const pkg = deps.readPackageJson(reactNativeRoot);
-  // An explicit `spm add/update --version <ver>` pins the artifacts-cache slot
-  // into the injected xcodeproj's `.spm-injected.json` marker
-  // (artifactsVersionOverride — see generate-spm-xcodeproj.js). Prefer that
-  // pin over the version derived from node_modules/react-native/package.json,
-  // so a version-mismatched setup (app package version != artifact label)
-  // keeps healing against the SAME slot `add`/`update` selected.
-  const artifactsVersionOverride = deps.readArtifactsVersionOverride(appRoot);
-  const rawVersion = artifactsVersionOverride ?? pkg?.version ?? '0.0.0';
-  if (artifactsVersionOverride != null) {
-    log(
-      `Using pinned artifacts version ${artifactsVersionOverride} (from .spm-injected.json)`,
-    );
-  }
-  // Preserve the flavor this app was pinned to (Release-pinned apps must not be
-  // stomped back to debug by a sync) — the build-time swap-flavor still flips
-  // the embedded/linked flavor per $CONFIGURATION on top of this. A FRESH app
-  // (no pin yet) derives its first flavor from $CONFIGURATION instead of
-  // hardcoding debug, so a first build that happens to be Release doesn't
-  // needlessly hard-fail once for the wrong flavor; 'debug' is the final
-  // fallback when $CONFIGURATION is also unavailable.
-  const flavor =
-    deps.deriveFlavorFromPin(appRoot) ??
-    deps.flavorFromConfiguration(process.env.CONFIGURATION) ??
-    'debug';
-
-  // Resolve the cache slot for the current RN version. For dev / nightly
-  // labels this is the actual nightly hash, so we look at the right slot
-  // even when package.json still says '1000.0.0'. A new nightly publish
-  // means a new slot — old `1000.0.0` slots no longer prevent re-download.
-  const slotVersion = await deps.resolveCacheSlotVersion(rawVersion);
-  const expectedCacheDir = deps.defaultCacheDir(slotVersion, flavor);
-  const expectedArtifactsJson = path.join(expectedCacheDir, 'artifacts.json');
-
-  // Remote SPM package mode: artifacts come from the remote package (SPM
-  // resolves + caches them) — no Maven download, no local artifacts package.
-  const remote = deps.remotePackageConfig(appRoot);
-  const plan = decideSyncPlan(remote, fs.existsSync(expectedArtifactsJson));
-
-  if (plan.shouldDownload) {
-    log(
-      `Downloading xcframework artifacts (slot: ${slotVersion}, ${displayPath(expectedCacheDir)})...`,
-    );
-    await deps.downloadArtifacts([
-      '--version',
-      rawVersion,
-      '--flavor',
-      flavor,
-      '--output',
-      expectedCacheDir,
-    ]);
-  } else if (!plan.isRemote) {
-    log(
-      `Using cached xcframework artifacts (slot: ${slotVersion}, ${displayPath(expectedCacheDir)})`,
-    );
-  } else if (remote != null) {
-    log(`Remote ReactNative package: ${remote.url} @ ${remote.version}`);
-  }
-  // Always feed the expected slot into generate-spm-package — it rewrites the
-  // local symlinks at <app>/build/xcframeworks/ to point at this slot. If the
-  // version changed and they previously pointed at an older slot, this fixes
-  // them up. Idempotent when nothing changed.
-  const artifactsDir /*: string */ = expectedCacheDir;
-
   log('Re-generating build/generated/autolinking/Package.swift...');
   deps.generateAutolinking([
     '--app-root',
     appRoot,
     '--react-native-root',
     reactNativeRoot,
-    '--flavor',
-    flavor,
   ]);
-
-  if (plan.shouldGeneratePackage) {
-    log('Re-generating xcframeworks sub-package...');
-    deps.generatePackage([
-      '--app-root',
-      appRoot,
-      '--react-native-root',
-      reactNativeRoot,
-      '--artifacts-dir',
-      artifactsDir,
-    ]);
-  }
 
   // Rebuild the per-app generated-headers farm (vended as the ReactAppHeaders
   // SPM target inside the codegen package). React core headers need no trees
-  // — they live inside the composed artifacts (see generate-spm-package). The
+  // — they are vended by the invariant ReactHeaders/ReactNativeHeaders products.
+  // The
   // generated manifests are fully declarative (fixed-relative package paths),
   // so no path-locator JSON is written.
   deps.buildPerAppHeaderTree(appRoot, {log});
@@ -292,4 +157,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = {main, decideSyncPlan, deriveFlavorFromPin};
+module.exports = {main};

@@ -24,38 +24,36 @@ const path = require('path');
 // ---------------------------------------------------------------------------
 
 describe('generateXCFrameworksPackageSwift', () => {
-  it('renames React product to ReactNative', () => {
-    const result = generateXCFrameworksPackageSwift([
-      'React',
-      'ReactNativeDependencies',
-      'hermes-engine',
-    ]);
+  it('exposes only invariant compile-time products', () => {
+    const result = generateXCFrameworksPackageSwift();
     expect(result).toContain(
-      '.library(name: "ReactNative", targets: ["React"])',
+      '.library(name: "ReactHeaders", targets: ["ReactHeaders"])',
     );
     expect(result).toContain(
-      '.library(name: "ReactNativeDependencies", targets: ["ReactNativeDependencies"])',
+      '.library(name: "ReactNativeHeaders", targets: ["ReactNativeHeaders"])',
     );
     expect(result).toContain(
-      '.library(name: "hermes-engine", targets: ["hermes-engine"])',
+      '.library(name: "ReactNativeDependenciesHeaders", targets: ["ReactNativeDependenciesHeaders"])',
     );
+    expect(result).not.toContain('.library(name: "ReactNative"');
+    expect(result).not.toContain('.library(name: "hermes-engine"');
   });
 
-  it('lists binary targets', () => {
-    const result = generateXCFrameworksPackageSwift([
-      'React',
-      'ReactNativeDependencies',
-    ]);
+  it('uses a Clang ReactHeaders target and header-only binary targets', () => {
+    const result = generateXCFrameworksPackageSwift();
     expect(result).toContain(
-      '.binaryTarget(name: "React", path: "React.xcframework")',
+      'name: "ReactHeaders",\n            dependencies: ["ReactNativeHeaders"]',
     );
+    expect(result).toContain('path: "ReactHeadersTarget"');
+    expect(result).toContain('publicHeadersPath: "include"');
     expect(result).toContain(
-      '.binaryTarget(name: "ReactNativeDependencies", path: "ReactNativeDependencies.xcframework")',
+      'name: "ReactNativeHeaders",\n            path: "ReactNativeHeaders.xcframework"',
     );
+    expect(result).not.toContain('.binaryTarget(\n            name: "React",');
   });
 
   it('includes auto-generated header comment', () => {
-    const result = generateXCFrameworksPackageSwift(['React']);
+    const result = generateXCFrameworksPackageSwift();
     expect(result).toContain('AUTO-GENERATED');
     expect(result).toContain('swift-tools-version: 6.0');
     expect(result).toContain('name: "ReactNative"');
@@ -139,8 +137,6 @@ describe('main', () => {
     );
   }
 
-  // Builds an artifacts dir with artifacts.json + a target dir per entry.
-  // Each value's `present` flag controls whether the entry is written at all.
   function writeArtifacts(entries /*: Array<string> */) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'spm-pkg-art-'));
     const json = {};
@@ -157,7 +153,11 @@ describe('main', () => {
     return dir;
   }
 
-  function run(artifactsDir /*:: ?: ?string */) {
+  function run(
+    debugArtifactsDir /*:: ?: ?string */,
+    releaseArtifactsDir /*:: ?: ?string */,
+    prepare /*:: ?: ?Function */,
+  ) {
     const argv = [
       '--app-root',
       appRoot,
@@ -166,25 +166,46 @@ describe('main', () => {
       '--version',
       '0.85.0',
     ];
-    if (artifactsDir != null) {
-      argv.push('--artifacts-dir', artifactsDir);
+    if (debugArtifactsDir != null) {
+      argv.push('--debug-artifacts-dir', debugArtifactsDir);
     }
-    main(argv);
+    if (releaseArtifactsDir != null) {
+      argv.push('--release-artifacts-dir', releaseArtifactsDir);
+    }
+    main(
+      argv,
+      prepare == null ? undefined : {prepareFlavoredFrameworks: prepare},
+    );
   }
 
-  it('generates Package.swift + symlinks when headers ship in the slot', () => {
+  it('prepares both flavors before generating the invariant Package.swift', () => {
     writeAppPkg();
-    const artifactsDir = writeArtifacts([
+    const debugArtifactsDir = writeArtifacts([
       'React',
       'ReactNativeDependencies',
       'hermes-engine',
       'ReactNativeHeaders',
       'ReactNativeDependenciesHeaders',
     ]);
+    const releaseArtifactsDir = writeArtifacts([
+      'React',
+      'ReactNativeDependencies',
+      'hermes-engine',
+      'ReactNativeHeaders',
+      'ReactNativeDependenciesHeaders',
+    ]);
+    const prepare = jest.fn(({appRoot: root}) => {
+      fs.mkdirSync(path.join(root, 'build', 'xcframeworks'), {recursive: true});
+    });
     try {
-      run(artifactsDir);
+      run(debugArtifactsDir, releaseArtifactsDir, prepare);
 
       expect(process.exitCode).toBeUndefined();
+      expect(prepare).toHaveBeenCalledWith({
+        appRoot,
+        debugArtifactsDir,
+        releaseArtifactsDir,
+      });
 
       const pkgSwift = path.join(
         appRoot,
@@ -194,50 +215,27 @@ describe('main', () => {
       );
       expect(fs.existsSync(pkgSwift)).toBe(true);
       const contents = fs.readFileSync(pkgSwift, 'utf8');
-      expect(contents).toContain('.binaryTarget(name: "React"');
-      // All five artifacts render as binary targets + products — the two
-      // headers-only companions included.
-      expect(contents).toContain('.binaryTarget(name: "ReactNativeHeaders"');
-      expect(contents).toContain(
-        '.binaryTarget(name: "ReactNativeDependenciesHeaders"',
+      expect(contents).toContain('.library(name: "ReactHeaders"');
+      expect(contents).not.toContain(
+        '.binaryTarget(\n            name: "React",',
       );
-      expect(contents).toContain(
-        '.library(name: "ReactNativeDependenciesHeaders"',
-      );
-      // The slot comment is derived from the artifacts dir's trailing path
-      // segments (version/flavor), not the --version flag.
-      expect(contents).toContain('Cache slot:');
-
-      const reactLink = path.join(
-        appRoot,
-        'build',
-        'xcframeworks',
-        'React.xcframework',
-      );
-      expect(fs.lstatSync(reactLink).isSymbolicLink()).toBe(true);
     } finally {
-      fs.rmSync(artifactsDir, {recursive: true, force: true});
+      fs.rmSync(debugArtifactsDir, {recursive: true, force: true});
+      fs.rmSync(releaseArtifactsDir, {recursive: true, force: true});
     }
   });
 
-  it('throws when ReactNativeHeaders is absent (no consumer-side compose)', () => {
+  it('requires Debug and Release together', () => {
     writeAppPkg();
-    // Artifacts WITHOUT ReactNativeHeaders: the consumer does not compose the
-    // layout locally, it fails with a clear error instead.
     const artifactsDir = writeArtifacts([
       'React',
       'ReactNativeDependencies',
-      'ReactNativeDependenciesHeaders',
       'hermes-engine',
     ]);
     try {
-      expect(() => run(artifactsDir)).toThrow(/ReactNativeHeaders/);
-      // No package is generated when the artifacts are incomplete.
-      expect(
-        fs.existsSync(
-          path.join(appRoot, 'build', 'xcframeworks', 'Package.swift'),
-        ),
-      ).toBe(false);
+      expect(() => run(artifactsDir, null, jest.fn())).toThrow(
+        /both --debug-artifacts-dir and --release-artifacts-dir are required/,
+      );
     } finally {
       fs.rmSync(artifactsDir, {recursive: true, force: true});
     }
@@ -245,27 +243,27 @@ describe('main', () => {
 
   it('throws when no package.json is found', () => {
     // No app package.json written.
-    expect(() => run(null)).toThrow(/No package\.json/);
+    expect(() => run(null, null)).toThrow(/No package\.json/);
   });
 
-  it('throws when --artifacts-dir has no artifacts.json', () => {
+  it('does not publish Package.swift if artifact preparation fails', () => {
     writeAppPkg();
-    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spm-pkg-empty-'));
+    const debugDir = writeArtifacts([]);
+    const releaseDir = writeArtifacts([]);
     try {
-      expect(() => run(emptyDir)).toThrow(/artifacts\.json not found/);
+      expect(() =>
+        run(debugDir, releaseDir, () => {
+          throw new Error('invalid release artifacts');
+        }),
+      ).toThrow(/invalid release artifacts/);
+      expect(
+        fs.existsSync(
+          path.join(appRoot, 'build', 'xcframeworks', 'Package.swift'),
+        ),
+      ).toBe(false);
     } finally {
-      fs.rmSync(emptyDir, {recursive: true, force: true});
-    }
-  });
-
-  it('throws when artifacts.json is missing a required entry', () => {
-    writeAppPkg();
-    // Missing hermes-engine.
-    const artifactsDir = writeArtifacts(['React', 'ReactNativeDependencies']);
-    try {
-      expect(() => run(artifactsDir)).toThrow(/missing required entries/);
-    } finally {
-      fs.rmSync(artifactsDir, {recursive: true, force: true});
+      fs.rmSync(debugDir, {recursive: true, force: true});
+      fs.rmSync(releaseDir, {recursive: true, force: true});
     }
   });
 
@@ -274,7 +272,7 @@ describe('main', () => {
     const xcfwDir = path.join(appRoot, 'build', 'xcframeworks');
     fs.mkdirSync(xcfwDir, {recursive: true});
     fs.writeFileSync(path.join(xcfwDir, 'Package.swift'), '// existing');
-    run(null);
+    run(null, null);
     // No artifacts-dir: it should leave the existing manifest untouched.
     expect(process.exitCode).toBeUndefined();
     expect(fs.readFileSync(path.join(xcfwDir, 'Package.swift'), 'utf8')).toBe(

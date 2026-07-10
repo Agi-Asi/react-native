@@ -18,8 +18,8 @@ of truth for how that resolves.
 
 | Namespace | Served by | Mechanism |
 |-----------|-----------|-----------|
-| `<React/...>`, `<react/...>` | `React.xcframework` (React binaryTarget) | Xcode auto-adds `-F` for the linked binary product; `React.framework/Headers` is the unified root. |
-| Everything else: `<ReactCommon/...>`, `<jsi/...>`, `<react/renderer/...>`, `<yoga/...>`, folly/glog/boost/fmt/double-conversion | `ReactNativeHeaders.xcframework` (headers-only library binaryTarget) | Xcode auto-adds the binary target's `Headers` dir as a search path; plain per-namespace module maps. |
+| Objective-C `<React/...>` / Swift `import React` | `ReactHeaders` Clang source target | Canonical Debug/Release-identical React headers staged under `ReactHeadersTarget/include/React`, with a plain `module React` module map. |
+| Lowercase C++ `<react/...>` and everything else: `<ReactCommon/...>`, `<jsi/...>`, `<react/renderer/...>`, `<yoga/...>`, folly/glog/boost/fmt/double-conversion | `ReactNativeHeaders.xcframework` plus `ReactNativeDependenciesHeaders.xcframework` | Header-only invariant binary targets keep lowercase `react` separate from Objective-C `React` and propagate their search paths through product dependencies. |
 | `<ReactCodegen/...>`, `ReactAppDependencyProvider`, this app's generated specs | `ReactAppHeaders` SPM target in the codegen package | SPM `publicHeadersPath` propagation — a real target dependency, not a flag. |
 
 The one remaining materialized header tree is the per-app farm at

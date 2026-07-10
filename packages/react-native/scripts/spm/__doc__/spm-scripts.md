@@ -118,7 +118,7 @@ the command auto-redirects into `ios/` with a banner.
 | `update` | Re-run the pipeline and refresh the existing injection. Default once a project is injected. |
 | `deinit` | The exact inverse of `add`: surgically remove only what `add` injected (recorded in `.spm-injected.json`) and drop the marker. Git-recoverable; no prompt. |
 | `scaffold` | Generate `Package.swift` into `node_modules/<dep>/` for community RN libraries that ship only a podspec. |
-| `sync` (advanced) | Lightweight resync invoked by the Xcode auto-sync build phase. Regenerates autolinking + xcframeworks sub-packages. Not for humans. |
+| `sync` (advanced) | Lightweight resync invoked by the Xcode auto-sync build phase. Regenerates invariant codegen and autolinking output only. Not for humans. |
 | `codegen` (advanced) | Run codegen and install the SwiftPM codegen template only. |
 | `download` (advanced) | Download/check xcframework artifacts only. |
 
@@ -130,12 +130,11 @@ accepts kebab-case equivalents (e.g. `--skip-codegen`).
 | Option | Description |
 |---|---|
 | `--version <ver>` | RN version (default: from package.json) |
-| `--flavor <debug\|release>` | Initial artifact flavor to resolve (default: debug). Both flavors are fetched at `add`; the embedded flavor then auto-matches the Xcode build configuration — see below |
 | `--yes` | Skip the dirty-pbxproj confirmation prompt |
 | `--xcodeproj <path>` | [add] Which `.xcodeproj` to inject into (when several exist) |
 | `--productName <name>` | [add] Which app target to inject into (when several exist) |
 | `--deintegrate` | [add] Run `pod deintegrate` + strip React Native from the Podfile before injecting |
-| `--artifacts <path>` | [advanced] Local artifact source: a `.xcframework` (used directly) or a directory (cache dir to read/download into) |
+| `--artifacts <path>` | [advanced] Local artifact root containing complete `debug/` and `release/` cache slots |
 | `--download <auto\|skip\|force>` | [advanced] Artifact download policy (default: auto) |
 | `--skipCodegen` | [advanced] Skip the codegen step |
 
@@ -147,15 +146,15 @@ assertions, `RN_DEBUG_STRING_CONVERTIBLE` — while *release* strips them for
 production. A Debug build must embed the debug binaries and a Release/archive the
 release ones.
 
-SwiftPM `binaryTarget`s can't branch on the build configuration, so — mirroring
-the CocoaPods `React-Core-prebuilt` swap (`replace-rncore-version.js`) — `spm add`
-downloads **both** flavors, and a generated build phase (`react-native spm
-swap-flavor`) overwrites the SwiftPM-copied `React` / `ReactNativeDependencies` /
-`hermesvm` frameworks in `BUILT_PRODUCTS_DIR` with the slice matching
-`$CONFIGURATION`, before Link. It runs on every build, is idempotent, and works
-under both Xcode and `xcodebuild`. No manual step: build Debug → debug binaries,
-build Release/archive → release binaries. (`--flavor` only sets which flavor is
-resolved first; the swap corrects the embedded binaries per build.)
+SwiftPM `binaryTarget`s can't branch on the build configuration, so runtime
+frameworks are deliberately kept out of the package graph. `spm add` downloads
+and validates **both** flavors into immutable app-local slots. It injects
+SDK/architecture-qualified Xcode settings that link the exact selected binaries,
+plus one phase that copies and signs the selected frameworks into the app.
+Configurations containing `debug` or `development` select Debug; every other
+configuration selects Release. Selection uses only generated build settings and
+standard macOS tools: builds do not run Node, mutate symlinks, regenerate the
+package graph, or require a second build.
 
 ## What to commit
 
@@ -353,10 +352,10 @@ across apps; refresh it with `react-native spm update --download force`.
 | 1. CLI config | `spm/generate-spm-autolinking-config.js` | `build/generated/autolinking/autolinking.json` |
 | 2. Codegen | `generate-codegen-artifacts.js` | `build/generated/ios/` |
 | 3. Autolinking | `spm/generate-spm-autolinking.js` | `build/generated/autolinking/Package.swift` |
-| 4. Download | `spm/download-spm-artifacts.js` | Cached xcframeworks (skipped when the slot is complete) |
-| 5. Package | `spm/generate-spm-package.js` | `build/xcframeworks/Package.swift` + symlinks |
-| 6. Inject | `spm/generate-spm-xcodeproj.js` | SwiftPM packages injected into the existing `<AppName>.xcodeproj` + `.spm-injected.json` marker |
-| Auto-sync | `spm/sync-spm-autolinking.js` | Re-runs codegen/autolinking/package generation at Xcode build time |
+| 4. Download | `spm/download-spm-artifacts.js` | Complete Debug and Release cache slots |
+| 5. Package | `spm/generate-spm-package.js` | Immutable flavor slots, central manifest, canonical `ReactHeaders`, and invariant `Package.swift` |
+| 6. Inject | `spm/generate-spm-xcodeproj.js` | Invariant SwiftPM products plus configuration-qualified linker settings and the embed/sign phase |
+| Auto-sync | `spm/sync-spm-autolinking.js` | Re-runs invariant codegen/autolinking output only at Xcode build time |
 
 ## Directory Layout
 
@@ -375,12 +374,20 @@ my-app/ios/
                                        package identity stays unique
         headers/                   <-- generated header symlinks
       ios/                         <-- gitignored, codegen output
-    xcframeworks/                  <-- gitignored, symlinks to cached artifacts
-      React.xcframework -> ~/Library/Caches/.../React.xcframework
+    xcframeworks/                  <-- gitignored, immutable runtime flavor slots + invariant package
+      debug/
+        React.xcframework -> ~/Library/Caches/.../debug/React.xcframework
+        ReactNativeDependencies.xcframework -> ...
+        hermes-engine.xcframework -> ...
+      release/
+        React.xcframework -> ~/Library/Caches/.../release/React.xcframework
+        ReactNativeDependencies.xcframework -> ...
+        hermes-engine.xcframework -> ...
+      ReactHeadersTarget/          <-- canonical Objective-C React headers + module map
       ReactNativeHeaders.xcframework -> ...
-      ReactNativeDependencies.xcframework -> ...
       ReactNativeDependenciesHeaders.xcframework -> ...
-      hermes-engine.xcframework -> ...
+      flavored-frameworks.json
+      .artifact-stamp
 ```
 
 ## Header Resolution
@@ -389,10 +396,11 @@ React Native uses CocoaPods-style imports (`#import <React/RCTBridge.h>`) that
 SwiftPM doesn't natively support. The prebuilt artifacts serve them through SwiftPM
 package products — no `-I` search-path flags, and no clang VFS overlay:
 
-1. **`<React/…>` and `@import React;`** resolve through `React.xcframework`'s
-   own `React.framework` — its `Headers/` + framework module map are served
-   automatically via the framework search path.
-2. **Every other RN namespace** (`react/`, `yoga/`, `jsi/`,
+1. **`<React/…>` and `import React`** resolve through the invariant
+   **`ReactHeaders` Clang target**. It stages one canonical header copy after
+   proving Debug and Release expose identical public headers, and uses a plain
+   `module React` module map with `React/`-prefixed paths.
+2. **Lowercase C++ `react/` and every other RN namespace** (`yoga/`, `jsi/`,
    `jsinspector-modern`, …) comes from **`ReactNativeHeaders.xcframework`**, a
    headers-only (LIBRARY-type) binaryTarget whose per-slice `Headers/` SwiftPM
    auto-serves to dependents.
@@ -403,7 +411,7 @@ package products — no `-I` search-path flags, and no clang VFS overlay:
    is framework-type and can't expose those headers to SwiftPM).
 
 Targets that compile against React take these as product dependencies
-(`ReactNative`, `ReactNativeHeaders`, `ReactNativeDependenciesHeaders`, plus the
+(`ReactHeaders`, `ReactNativeHeaders`, `ReactNativeDependenciesHeaders`, plus the
 app's `ReactAppHeaders`), so all of the above resolve with zero search-path
 flags.
 
@@ -435,8 +443,9 @@ package graph before any phase runs; see [Fresh clones & CI](#fresh-clones--ci).
 | 1 | Sync SPM Autolinking |
 | 2 | Sources (compile) |
 | 3 | Frameworks (link) |
-| 4 | Resources (copy) |
-| 5 | Build JS Bundle |
+| 4 | Embed React Native Flavored Frameworks |
+| 5 | Resources (copy) |
+| 6 | Build JS Bundle |
 
 Failures in the sync phase are non-fatal — it emits a `warning:` and exits 0,
 so an already-generated package graph can still produce a successful build.

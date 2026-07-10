@@ -78,14 +78,13 @@ module.exports = function plugin(context) {
       // e.g. the generated module registry, registered with codegen:
       {path: 'build/generated/expo/ExpoModulesProvider.swift'},
     ],
-    flavoredArtifacts: [
-      // Precompiled xcframeworks that come in debug/release flavor pairs — the
-      // same "binaryTarget can't branch on $CONFIGURATION" problem RN solves for
-      // its own React / hermes / ReactNativeDependencies. RN's build-time
-      // swap-flavor repoints `link` to match the build configuration.
+    flavoredFrameworks: [
+      // Precompiled dynamic XCFrameworks that come in mandatory Debug/Release
+      // pairs. RN validates and stages both outside the SwiftPM graph.
       {
-        name: 'ExpoModulesCore',
-        link: '/…/build/generated/…/ExpoModulesCore/artifacts/ExpoModulesCore.xcframework',
+        id: 'expo-modules-core',
+        frameworkName: 'ExpoModulesCore',
+        linkage: 'dynamic',
         flavors: {
           debug: '/…/output/debug/xcframeworks/ExpoModulesCore.xcframework',
           release: '/…/output/release/xcframeworks/ExpoModulesCore.xcframework',
@@ -102,28 +101,21 @@ module.exports = function plugin(context) {
 };
 ```
 
-#### `flavoredArtifacts` — per-configuration precompiled xcframeworks
+#### `flavoredFrameworks` — per-configuration precompiled frameworks
 
-Each entry is `{name, link, flavors: {debug?, release?}}` with **absolute**
-paths:
+Each entry is
+`{id, frameworkName, linkage: 'dynamic', flavors: {debug, release}}`.
+Both flavor paths must be absolute and present when `spm add` or `spm update`
+runs. The framework and executable names, public headers, and platform slices
+must agree across flavors. Static binaries, nested frameworks, duplicate IDs,
+and duplicate embedded framework names are fatal.
 
-- `link` is a **plugin-owned** stable symlink the plugin's binaryTarget
-  references. The plugin creates it at sync time; **RN only ever repoints it** to
-  the current configuration's flavor — it never creates or deletes it (so
-  `spm deinit` leaves it untouched). If the link is missing at swap time RN
-  warns and skips (it will not create it for you).
-- `flavors.debug` / `flavors.release` are the per-flavor xcframework paths. A
-  flavor **may be absent** (not derivable) and a present path **may not exist on
-  disk yet** (not built). RN checks both at swap time: the requested flavor
-  missing → a warning (and, if the link is currently pinned to the other flavor,
-  an `error:` line, because the app would embed the wrong flavor).
-
-Recorded to `<outputDir>/.spm-plugin-flavored-artifacts.json` on every sync
-(always rewritten — `[]` when no plugin declares any, so removing a plugin clears
-stale entries) and consumed by the build-time `swap-flavor` pass, which repoints
-plugin links in the same pass as RN's own frameworks. Because that repoint runs
-in the scheme pre-action, plugin artifacts inherit graph-time embed correctness
-for free — no plugin-side swap script needed.
+The declarations are recorded to
+`<outputDir>/.spm-plugin-flavored-frameworks.json`, normalized into the same
+immutable app-local slots as React Native, and added to Xcode's exact linker and
+embed settings. They are not emitted as SwiftPM product dependencies. Adding or
+removing one requires `spm update`; the build-time `spm sync` intentionally does
+not mutate runtime framework settings.
 
 #### `watchPaths` — plugin staleness inputs
 
@@ -136,7 +128,7 @@ manifests. On the next build the phase re-syncs when a watched **file** is newer
 than the last sync, a watched **dir** has a newer child, or a watched path has
 **vanished** (a rename forces a re-sync so the config error surfaces).
 
-Validation mirrors `flavoredArtifacts`: a non-array is ignored with a warning
+Unlike `flavoredFrameworks`, watch paths are best-effort: a non-array is ignored with a warning
 (never fatal), and each non-string / empty / **relative** entry is dropped with a
 warning. Absolute-only, because the generated phase tests these paths with no cwd
 context. The kept paths are folded into `<outputDir>/.spm-sync-watch-paths`
@@ -151,7 +143,6 @@ alongside RN's own, then deduped and sorted.
 | `reactNativeRoot` | Resolved `react-native` package root. |
 | `autolinking` | Parsed `autolinking.json` — RN's already-discovered deps, so the plugin can react to them. |
 | `outputDir` | `build/generated/autolinking` — where generated artifacts land. |
-| `flavor` | `'debug'` \| `'release'` — pick the matching slice of per-configuration prebuilt xcframeworks. |
 | `react` | How to depend on React (see below). `null` when there is no resolvable React dependency. |
 
 #### `context.react` — depending on React
@@ -167,7 +158,7 @@ react: {
     {name: 'ReactNative', path: '<absolute>', relPath: '<relative-to-outputDir>'} // local
     | {name: '<identity>', url: '<url>', version: '<version>'},                   // remote (SPM-resolved)
   products: [
-    {name: 'ReactNative', package: 'ReactNative'},
+    {name: 'ReactHeaders', package: 'ReactNative'},
     {name: 'ReactNativeHeaders', package: 'ReactNative'},
     {name: 'ReactNativeDependenciesHeaders', package: 'ReactNative'},
     {name: 'ReactAppHeaders', package: 'React-GeneratedCode'}, // ← separate, per-app package
@@ -196,7 +187,7 @@ wiring, it stays correct across repackaging.
 | `packageDependencies` | The aggregator's `.package(…)` list (`path`, or `url` + `version`). |
 | `productDependencies` | The `AutolinkedAggregate` target's `dependencies:` (`.product(name:package:)`). |
 | `generatedSources` | Recorded for the codegen step to register (e.g. a module-registry `.swift`). |
-| `flavoredArtifacts` | Debug/release precompiled xcframeworks whose plugin-owned link RN repoints per `$CONFIGURATION` (see above). Recorded to `.spm-plugin-flavored-artifacts.json`. Invalid entries are dropped with a warning (not fatal). |
+| `flavoredFrameworks` | Mandatory Debug/Release dynamic XCFramework pairs normalized outside SwiftPM. Malformed or incomplete entries are fatal. |
 
 The plugin returns **data** — it never writes into React Native's generated
 tree. RN owns the merge, so a re-sync reproduces the same `Package.swift`
@@ -228,8 +219,8 @@ message identifying the framework. A framework silently dropping its modules
 ## Status & open items (Preview)
 
 - **Implemented & tested:** discovery (transitive + deny-list), invocation,
-  package + product merge, `flavor` in context, fail-closed, dedupe,
-  `flavoredArtifacts` merge + record + build-time swap (repoint & rsync).
+  package + product merge, fail-closed validation, and dual-flavor framework
+  normalization/link/embed outside SwiftPM.
 - **Implemented & tested:** `generatedSources` **app-target wiring**. The
   merge writes `.spm-plugin-generated-sources.json`; the `spm add`/`update`
   xcodeproj injector (generate-spm-xcodeproj.js) reads it and wires each source

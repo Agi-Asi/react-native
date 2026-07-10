@@ -46,16 +46,13 @@
  * Options:
  *   --version <ver>             React Native version (default: the resolved
  *                               node_modules/react-native version).
- *   --flavor <debug|release>    Artifact flavor (default: the app's current
- *                               pin, else debug for a fresh app).
  *   --yes                       Skip the dirty-pbxproj confirmation prompt.
  *   [add] --xcodeproj <path>    Which .xcodeproj to inject into (when several).
  *   [add] --product-name <name> Which app target to inject into (when several).
  *   [add] --deintegrate         Run `pod deintegrate` + strip RN from the
  *                               Podfile before injecting.
- *   [advanced] --artifacts <path>          Local artifact source: a
- *                               .xcframework → use it directly (no download);
- *                               a directory → cache dir (read / download here).
+ *   [advanced] --artifacts <path>          Local two-flavor artifact root;
+ *                               must contain debug/ and release/ cache slots.
  *   [advanced] --download <auto|skip|force> Artifact policy (default: auto).
  *   [advanced] --skip-codegen   Skip the react-native codegen step.
  *
@@ -79,6 +76,7 @@ const {
   resolveCacheSlotVersion,
   validateArtifactsCache,
 } = require('./spm/download-spm-artifacts');
+const {finalizeArtifactPublication} = require('./spm/flavored-frameworks');
 const {
   MissingManifestError,
   main: generateAutolinking,
@@ -105,7 +103,6 @@ const {
   findProjectRoot,
   installSpmCodegenTemplate,
   makeLogger,
-  readFlavorPin,
   readPackageJson,
   remotePackageConfig,
   runCodegenAndInstallTemplate,
@@ -126,7 +123,6 @@ const VALID_ACTIONS = new Set([
   'codegen',
   'download',
   'scaffold',
-  'swap-flavor',
 ]);
 
 /*::
@@ -153,13 +149,6 @@ function parseArgs(argv /*: Array<string> */) /*: SetupArgs */ {
       describe:
         'React Native version (e.g. 0.80.0). Defaults to the version in node_modules/react-native/package.json',
     })
-    .option('flavor', {
-      type: 'string',
-      describe:
-        "Artifact flavor (debug or release). Defaults to the app's current " +
-        'pin (from build/xcframeworks/React.xcframework), or debug for a ' +
-        'fresh app with no pin yet.',
-    })
     .option('yes', {
       type: 'boolean',
       default: false,
@@ -184,7 +173,7 @@ function parseArgs(argv /*: Array<string> */) /*: SetupArgs */ {
     .option('artifacts', {
       type: 'string',
       describe:
-        '[advanced] Local artifact source: a .xcframework file (used directly, no download) or a directory (cache dir to read/download into).',
+        '[advanced] Local artifact root containing complete debug/ and release/ cache slots.',
     })
     .option('download', {
       type: 'string',
@@ -224,10 +213,6 @@ function parseArgs(argv /*: Array<string> */) /*: SetupArgs */ {
     action: requestedAction,
     version: parsed.version ?? null,
     artifacts: parsed.artifacts ?? null,
-    explicitFlavor: parsed.flavor ?? null,
-    // Placeholder — main() resolves the real value via resolveFlavor() before
-    // anything reads it (see the explicitFlavor comment in spm-types.js).
-    flavor: parsed.flavor ?? 'debug',
     skipCodegen: parsed['skip-codegen'],
     downloadPolicy: parsed.download,
     productName: parsed['product-name'] ?? null,
@@ -306,7 +291,7 @@ function promptYesNo(
 function resolveAction(
   requestedAction /*: SetupArgs['action'] */,
   appRoot /*: string */,
-) /*: 'add' | 'update' | 'deinit' | 'sync' | 'codegen' | 'download' | 'scaffold' | 'swap-flavor' */ {
+) /*: 'add' | 'update' | 'deinit' | 'sync' | 'codegen' | 'download' | 'scaffold' */ {
   if (requestedAction != null) {
     return requestedAction;
   }
@@ -315,31 +300,6 @@ function resolveAction(
   // `--deintegrate` (fresh CocoaPods project) is decided by the safe-gate in
   // main(), which only applies on this implicit path.
   return findInjectedXcodeproj(appRoot) != null ? 'update' : 'add';
-}
-
-/**
- * Resolves the single artifact flavor every downstream consumer (ensureArtifacts,
- * generateXcframeworksPackage, the other-flavor prefetch, scaffold's cache-slot
- * label, generateAutolinking) sees this run. An EXPLICIT `--flavor` always wins,
- * and must be exactly 'debug' or 'release' — anything else is a hard error, since
- * a bogus value would go on to build cache paths and download the wrong (or no)
- * artifacts. Without an explicit flavor, PRESERVE whatever `appRoot` is already
- * pinned to (so `spm update` can't silently re-pin a Release app back to debug);
- * a fresh app with no pin yet falls back to 'debug'.
- */
-function resolveFlavor(
-  explicitFlavor /*: string | null */,
-  appRoot /*: string */,
-) /*: 'debug' | 'release' */ {
-  if (explicitFlavor != null) {
-    if (explicitFlavor !== 'debug' && explicitFlavor !== 'release') {
-      throw new Error(
-        `Invalid --flavor "${explicitFlavor}" — expected "debug" or "release".`,
-      );
-    }
-    return explicitFlavor;
-  }
-  return readFlavorPin(appRoot) ?? 'debug';
 }
 
 /**
@@ -469,7 +429,7 @@ async function runScaffold(
   try {
     const rawVersion = args.version ?? determineVersion(args, reactNativeRoot);
     const slotVersion = await resolveCacheSlotVersion(rawVersion);
-    cacheSlotLabel = `${slotVersion}/${args.flavor}`;
+    cacheSlotLabel = `${slotVersion}/dual-flavor`;
   } catch {
     // Without a slot label the scaffolder still works; the file just
     // doesn't get the slot-bump comment.
@@ -527,110 +487,36 @@ async function runScaffold(
   }
 }
 
-// `--artifacts <path>` (advanced) is shape-detected: a `.xcframework` file is a
-// local xcframework to use directly (no download); a directory is a cache-dir
-// override (read if populated, download there if empty).
-function localXcframeworkArg(args /*: SetupArgs */) /*: string | null */ {
-  return args.artifacts != null && args.artifacts.endsWith('.xcframework')
-    ? args.artifacts
-    : null;
-}
-function artifactsDirArg(args /*: SetupArgs */) /*: string | null */ {
-  return args.artifacts != null && !args.artifacts.endsWith('.xcframework')
-    ? args.artifacts
-    : null;
-}
-
-function prepareLocalXcframeworkArtifacts(
+async function ensureArtifactFlavor(
   args /*: SetupArgs */,
-  appRoot /*: string */,
-  version /*: string */,
-) /*: string | null */ {
-  const localXcframework = localXcframeworkArg(args);
-  if (localXcframework == null) {
-    return artifactsDirArg(args);
-  }
-
-  const localReactPath = path.resolve(localXcframework);
-  if (
-    !localReactPath.endsWith('.xcframework') ||
-    !fs.existsSync(localReactPath)
-  ) {
+  rawVersion /*: string */,
+  slotVersion /*: string */,
+  flavor /*: 'debug' | 'release' */,
+) /*: Promise<string> */ {
+  if (args.artifacts != null && args.artifacts.endsWith('.xcframework')) {
     throw new Error(
-      `--artifacts path does not exist or is not an .xcframework: ${localReactPath}`,
+      '--artifacts must be a directory containing debug/ and release/ slots; ' +
+        'a single XCFramework cannot satisfy automatic switching',
     );
   }
-  const localXcfwDir = path.resolve(localReactPath, '..');
-  const xcfwLinksDir = path.join(appRoot, 'build', 'xcframeworks');
-  fs.mkdirSync(xcfwLinksDir, {recursive: true});
-
-  // Build artifacts.json from the local xcframework + any siblings or cached deps
-  const artifacts /*: {[string]: {xcframeworkPath: string, url: string}} */ =
-    {};
-  artifacts.React = {xcframeworkPath: localReactPath, url: ''};
-
-  // Look for the deps binary, hermes, AND both headers companions alongside the
-  // React.xcframework or in the cache. The headers-only companions ship beside
-  // their binaries in the same tarball (ReactNativeHeaders beside React;
-  // ReactNativeDependenciesHeaders beside ReactNativeDependencies), so a
-  // `--artifacts <local React.xcframework>` slot extracted from the tarballs has
-  // them as siblings. They are REQUIRED (validateArtifactsCache /
-  // generate-spm-package both need them) — omitting them made the local slot
-  // report incomplete and forced a full Maven download, defeating "use directly".
-  for (const name of [
-    'ReactNativeHeaders',
-    'ReactNativeDependencies',
-    'ReactNativeDependenciesHeaders',
-    'hermes-engine',
-  ]) {
-    const siblingPath = path.join(localXcfwDir, `${name}.xcframework`);
-    const cachePath = path.join(
-      defaultCacheDir(args.version ?? version, args.flavor),
-      `${name}.xcframework`,
-    );
-    if (fs.existsSync(siblingPath)) {
-      artifacts[name] = {xcframeworkPath: siblingPath, url: ''};
-    } else if (fs.existsSync(cachePath)) {
-      artifacts[name] = {xcframeworkPath: cachePath, url: ''};
-    }
-  }
-
-  fs.writeFileSync(
-    path.join(xcfwLinksDir, 'artifacts.json'),
-    JSON.stringify(artifacts, null, 2),
-    'utf8',
-  );
-  log(`Using local xcframework: ${displayPath(localReactPath)}`);
-  return xcfwLinksDir;
-}
-
-async function ensureArtifacts(
-  args /*: SetupArgs */,
-  version /*: string */,
-  artifactsDir /*: string | null */,
-) /*: Promise<string | null> */ {
-  // Resolve the cache-slot version before computing the cache dir. For dev /
-  // nightly labels this is the actual nightly hash, so each nightly gets its
-  // own slot and a new nightly invalidates the old slot automatically. Stable
-  // versions pass through unchanged.
-  const rawVersion = args.version ?? version;
-  const slotVersion = await resolveCacheSlotVersion(rawVersion);
   const resolvedArtifactsDir =
-    artifactsDir != null
-      ? path.resolve(artifactsDir)
-      : defaultCacheDir(slotVersion, args.flavor);
+    args.artifacts != null
+      ? path.resolve(args.artifacts, flavor)
+      : defaultCacheDir(slotVersion, flavor);
 
   if (args.downloadPolicy === 'force' && resolvedArtifactsDir != null) {
     log('Clearing cached artifacts (--download force)...');
     fs.rmSync(resolvedArtifactsDir, {recursive: true, force: true});
   }
 
-  if (resolvedArtifactsDir == null) {
-    log('No artifacts directory resolved, skipping download step');
-    return resolvedArtifactsDir;
-  }
   if (args.downloadPolicy === 'skip') {
-    log('Skipping artifact download (--download skip)');
+    const error = validateArtifactsCache(resolvedArtifactsDir);
+    if (error != null) {
+      throw new Error(
+        `--download skip requires a complete ${flavor} slot: ${error}`,
+      );
+    }
+    log(`Using ${flavor} artifacts (--download skip)`);
     return resolvedArtifactsDir;
   }
 
@@ -642,20 +528,51 @@ async function ensureArtifacts(
   // REQUIRED_ARTIFACT has a present xcframework on disk.
   const cacheError = validateArtifactsCache(resolvedArtifactsDir);
   if (cacheError == null) {
-    log(`Artifacts already present in ${displayPath(resolvedArtifactsDir)}`);
+    log(
+      `${flavor} artifacts already present in ${displayPath(resolvedArtifactsDir)}`,
+    );
     return resolvedArtifactsDir;
   }
   log(`Cache incomplete (${cacheError}); re-downloading...`);
-  log(`Downloading xcframework artifacts (slot: ${slotVersion})...`);
+  log(`Downloading ${flavor} xcframework artifacts (slot: ${slotVersion})...`);
   await downloadArtifacts([
     '--version',
     rawVersion,
     '--flavor',
-    args.flavor,
+    flavor,
     '--output',
     resolvedArtifactsDir,
   ]);
+  const downloadedError = validateArtifactsCache(resolvedArtifactsDir);
+  if (downloadedError != null) {
+    throw new Error(
+      `downloaded ${flavor} slot is incomplete: ${downloadedError}`,
+    );
+  }
   return resolvedArtifactsDir;
+}
+
+async function ensureBothArtifactFlavors(
+  args /*: SetupArgs */,
+  version /*: string */,
+) /*: Promise<{debug: string, release: string}> */ {
+  // Resolve aliases/nightly labels exactly once so both flavors are guaranteed
+  // to come from the same selected artifact version.
+  const rawVersion = args.version ?? version;
+  const slotVersion = await resolveCacheSlotVersion(rawVersion);
+  const debug = await ensureArtifactFlavor(
+    args,
+    rawVersion,
+    slotVersion,
+    'debug',
+  );
+  const release = await ensureArtifactFlavor(
+    args,
+    rawVersion,
+    slotVersion,
+    'release',
+  );
+  return {debug, release};
 }
 
 function generateXcframeworksPackage(
@@ -663,7 +580,7 @@ function generateXcframeworksPackage(
   appRoot /*: string */,
   reactNativeRoot /*: string */,
   version /*: string */,
-  resolvedArtifactsDir /*: string | null */,
+  artifactDirs /*: {debug: string, release: string} */,
 ) {
   log('Generating xcframeworks sub-package...');
   const packageArgs = [
@@ -674,13 +591,8 @@ function generateXcframeworksPackage(
     '--version',
     version,
   ];
-  const localXcframework = localXcframeworkArg(args);
-  if (localXcframework != null) {
-    packageArgs.push('--local-xcframework', localXcframework);
-  }
-  if (resolvedArtifactsDir != null) {
-    packageArgs.push('--artifacts-dir', resolvedArtifactsDir);
-  }
+  packageArgs.push('--debug-artifacts-dir', artifactDirs.debug);
+  packageArgs.push('--release-artifacts-dir', artifactDirs.release);
   generatePackage(packageArgs);
 }
 
@@ -998,17 +910,6 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
     appRoot = redirectTo;
   }
 
-  // Resolve --flavor ONCE, here, before any downstream consumer reads it (see
-  // resolveFlavor's doc comment). Must run after the redirect above (the pin
-  // lives under the final appRoot).
-  try {
-    args.flavor = resolveFlavor(args.explicitFlavor, appRoot);
-  } catch (e) {
-    logError(e.message);
-    process.exitCode = 1;
-    return;
-  }
-
   const action = resolveAction(args.action, appRoot);
 
   // Zero-arg safe-gate: when `add` was resolved implicitly (no action typed)
@@ -1034,45 +935,6 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
   log(`Running SPM ${action} in: ${displayPath(appRoot)}`);
   if (projectRoot !== appRoot) {
     log(`Project root (package.json): ${displayPath(projectRoot)}`);
-  }
-
-  // Build-time flavor swap (invoked by the generated build phase). Kept early
-  // and dependency-free — no version resolution, no network — because it runs
-  // on EVERY Xcode build. Reads the Xcode build env for the target flavor +
-  // products dir. It ONLY repoints the app-local slot symlinks + corrects the
-  // link-step product copies — it NEVER writes the embedded `.app/Frameworks`
-  // copy (Xcode is that bundle's single writer).
-  if (action === 'swap-flavor') {
-    const {swapFlavorFrameworks} = require('./spm/swap-flavor');
-    try {
-      const result = swapFlavorFrameworks({
-        appRoot,
-        configuration: process.env.CONFIGURATION,
-        builtProductsDir: process.env.BUILT_PRODUCTS_DIR,
-        platformName: process.env.PLATFORM_NAME,
-        isMacCatalyst: process.env.IS_MACCATALYST === 'YES',
-        logger: {log},
-      });
-      // HARD-FAIL + CONVERGE. When an IN-TARGET build (BUILT_PRODUCTS_DIR set,
-      // i.e. hasProducts) STARTED on the wrong flavor and we just repointed it,
-      // this build must still fail: Xcode captured the stale embed source at
-      // graph-construction time, before this phase ran, and that cannot be fixed
-      // in-place (a second .app writer races Xcode's CodeSign). The pin is now
-      // correct, so the REBUILD is green. The generated build phase propagates
-      // this exit 1 to fail the build (at the END, after the trailing swap). No
-      // hard-fail in the pre-action (hasProducts false) — it stays auto-heal.
-      if (result.hasProducts && result.builtinsCorrected) {
-        const cfg = process.env.CONFIGURATION ?? '(unknown)';
-        logError(
-          `error: React Native SwiftPM frameworks were pinned to '${result.previousFlavor}' but this is a ${cfg} build. They have been switched to ${result.flavor} — build again (one-time after a configuration change). Tip: 'npx react-native spm update --flavor ${result.flavor}' switches ahead of time.`,
-        );
-        process.exitCode = 1;
-      }
-    } catch (e) {
-      // Non-fatal: a genuine flavor-swap failure must not break the build.
-      logError(`swap-flavor failed: ${e.message}`);
-    }
-    return;
   }
 
   if (action === 'deinit') {
@@ -1189,15 +1051,9 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
     return;
   }
 
-  let resolvedArtifactsDir = null;
   if (action === 'download') {
     try {
-      const artifactsDir = prepareLocalXcframeworkArtifacts(
-        args,
-        appRoot,
-        version,
-      );
-      await ensureArtifacts(args, version, artifactsDir);
+      await ensureBothArtifactFlavors(args, version);
     } catch (e) {
       logError(`Artifact setup failed: ${e.message}`);
       process.exitCode = 1;
@@ -1223,8 +1079,6 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
       appRoot,
       '--react-native-root',
       reactNativeRoot,
-      '--flavor',
-      args.flavor,
     ]);
   } catch (e) {
     if (e instanceof MissingManifestError) {
@@ -1239,60 +1093,30 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
     return;
   }
 
-  // Remote SPM package mode: artifacts come from the remote package (SPM
-  // resolves + caches them) — skip Maven download + the local artifacts pkg.
   const remote = remotePackageConfig(appRoot);
-  if (remote == null) {
-    try {
-      const artifactsDir = prepareLocalXcframeworkArtifacts(
-        args,
-        appRoot,
-        version,
-      );
-      resolvedArtifactsDir = await ensureArtifacts(args, version, artifactsDir);
-    } catch (e) {
-      logError(`Artifact setup failed: ${e.message}`);
-      process.exitCode = 1;
-      return;
-    }
-
-    try {
-      generateXcframeworksPackage(
-        args,
-        appRoot,
-        reactNativeRoot,
-        version,
-        resolvedArtifactsDir,
-      );
-    } catch (e) {
-      logError(`generate-spm-package.js failed: ${e.message}`);
-      process.exitCode = 1;
-      return;
-    }
-
-    // Pre-fetch the OTHER flavor's slot so the build-time `swap-flavor` phase
-    // can switch debug↔release without touching the network (mirrors CocoaPods
-    // downloading both flavors up front). Best-effort: a Debug-only workflow
-    // still builds if the release slot can't be fetched now — the swap just
-    // logs and leaves the resolved flavor in place. Honors --download skip.
-    if (action === 'add' || action === 'update') {
-      const otherFlavor = args.flavor === 'release' ? 'debug' : 'release';
-      try {
-        const otherArgs = {...args, flavor: otherFlavor};
-        await ensureArtifacts(
-          otherArgs,
-          version,
-          prepareLocalXcframeworkArtifacts(otherArgs, appRoot, version),
-        );
-      } catch (e) {
-        logError(
-          `Could not pre-fetch the ${otherFlavor} flavor for build-time swapping (${e.message}). ` +
-            `A ${otherFlavor}-configuration build will need it — re-run with network, or \`spm download --flavor ${otherFlavor}\`.`,
-        );
-      }
-    }
-  } else {
+  if (remote != null) {
     log(`Remote ReactNative package: ${remote.url} @ ${remote.version}`);
+  }
+  let artifactDirs;
+  try {
+    artifactDirs = await ensureBothArtifactFlavors(args, version);
+  } catch (e) {
+    logError(`Artifact setup failed: ${e.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    generateXcframeworksPackage(
+      args,
+      appRoot,
+      reactNativeRoot,
+      version,
+      artifactDirs,
+    );
+  } catch (e) {
+    logError(`generate-spm-package.js failed: ${e.message}`);
+    process.exitCode = 1;
+    return;
   }
 
   // (Re)install the static codegen Package.swift template once build/generated/ios exists.
@@ -1300,7 +1124,7 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
 
   // Build the per-app generated-headers farm (vended as the ReactAppHeaders
   // SPM target inside the codegen package). React core headers need no trees
-  // — they live inside the composed artifacts (generate-spm-package). The
+  // — they are vended by invariant SwiftPM compile products. The
   // generated manifests are fully declarative (fixed-relative package paths),
   // so no path-locator JSON is written.
   buildPerAppHeaderTree(appRoot, {log});
@@ -1322,6 +1146,8 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
     return;
   }
 
+  finalizeArtifactPublication(appRoot);
+
   logNextSteps(projectRoot, appRoot, args.productName);
 }
 
@@ -1334,6 +1160,6 @@ module.exports = {
   detectStandardRnLayoutRedirect,
   findInjectedXcodeproj,
   resolveAction,
-  resolveFlavor,
   shouldAutoDeintegrate,
+  ensureBothArtifactFlavors,
 };

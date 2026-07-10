@@ -12,11 +12,12 @@
 
 const {
   detectStandardRnLayoutRedirect,
+  ensureBothArtifactFlavors,
   findInjectedXcodeproj,
   resolveAction,
-  resolveFlavor,
   shouldAutoDeintegrate,
 } = require('../../setup-apple-spm');
+const {REQUIRED_ARTIFACTS} = require('../download-spm-artifacts');
 const {SPM_INJECTED_MARKER} = require('../generate-spm-xcodeproj');
 const {execFileSync} = require('child_process');
 const fs = require('fs');
@@ -118,6 +119,66 @@ describe('findInjectedXcodeproj', () => {
   it('returns null when no injected project exists', () => {
     mkXcodeproj(tempDir, 'MyApp.xcodeproj');
     expect(findInjectedXcodeproj(tempDir)).toBeNull();
+  });
+});
+
+describe('dual-flavor artifact input', () => {
+  let root;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'spm-dual-artifacts-'));
+  });
+
+  afterEach(() => fs.rmSync(root, {recursive: true, force: true}));
+
+  function writeCompleteSlot(flavor) {
+    const slot = path.join(root, flavor);
+    fs.mkdirSync(path.join(slot, 'hermes-headers', 'hermes'), {
+      recursive: true,
+    });
+    const artifacts = {};
+    for (const name of REQUIRED_ARTIFACTS) {
+      const xcframeworkPath = path.join(slot, `${name}.xcframework`);
+      fs.mkdirSync(xcframeworkPath, {recursive: true});
+      artifacts[name] = {xcframeworkPath};
+    }
+    fs.writeFileSync(
+      path.join(slot, 'artifacts.json'),
+      JSON.stringify(artifacts),
+    );
+    return slot;
+  }
+
+  function args() {
+    return {
+      version: null,
+      artifacts: root,
+      downloadPolicy: 'skip',
+    };
+  }
+
+  it('requires and returns complete Debug and Release slots', async () => {
+    const debug = writeCompleteSlot('debug');
+    const release = writeCompleteSlot('release');
+    await expect(ensureBothArtifactFlavors(args(), '0.85.0')).resolves.toEqual({
+      debug,
+      release,
+    });
+  });
+
+  it('fails if either flavor is incomplete', async () => {
+    writeCompleteSlot('debug');
+    await expect(ensureBothArtifactFlavors(args(), '0.85.0')).rejects.toThrow(
+      /complete release slot/,
+    );
+  });
+
+  it('rejects a single XCFramework as local artifact input', async () => {
+    const single = path.join(root, 'React.xcframework');
+    fs.mkdirSync(single);
+    await expect(
+      ensureBothArtifactFlavors({...args(), artifacts: single}, '0.85.0'),
+    ).rejects.toThrow(/single XCFramework cannot satisfy automatic switching/);
   });
 });
 
@@ -227,54 +288,5 @@ describe('shouldAutoDeintegrate', () => {
     // conversion only touches the pbxproj + Podfile, which stay clean.
     fs.writeFileSync(path.join(tempDir, 'package-lock.json'), '{}');
     expect(shouldAutoDeintegrate(tempDir, xcodeproj)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// resolveFlavor — F1: `--flavor` is absent-by-default (no more `default:
-// 'debug'` in yargs); resolution PRESERVES an existing pin, only falling back
-// to 'debug' for a fresh app. An explicit --flavor always wins and must be
-// exactly 'debug' or 'release'.
-// ---------------------------------------------------------------------------
-
-describe('resolveFlavor', () => {
-  let tempDir;
-  beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spm-resolve-flavor-'));
-  });
-  afterEach(() => {
-    fs.rmSync(tempDir, {recursive: true, force: true});
-  });
-
-  function pin(flavor) {
-    const dir = path.join(tempDir, 'build', 'xcframeworks');
-    fs.mkdirSync(dir, {recursive: true});
-    fs.symlinkSync(
-      path.join(tempDir, 'cache', '1.0', flavor, 'React.xcframework'),
-      path.join(dir, 'React.xcframework'),
-    );
-  }
-
-  it('no --flavor + an existing release pin -> release (pin preserved)', () => {
-    pin('release');
-    expect(resolveFlavor(null, tempDir)).toBe('release');
-  });
-
-  it('no --flavor + no pin -> debug (fresh app default)', () => {
-    expect(resolveFlavor(null, tempDir)).toBe('debug');
-  });
-
-  it('explicit --flavor release on a debug-pinned app -> release (explicit wins)', () => {
-    pin('debug');
-    expect(resolveFlavor('release', tempDir)).toBe('release');
-  });
-
-  it('explicit --flavor debug on a release-pinned app -> debug (explicit wins)', () => {
-    pin('release');
-    expect(resolveFlavor('debug', tempDir)).toBe('debug');
-  });
-
-  it('throws on an invalid explicit --flavor value', () => {
-    expect(() => resolveFlavor('nightly', tempDir)).toThrow(/Invalid --flavor/);
   });
 });

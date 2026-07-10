@@ -21,6 +21,7 @@
  * by `spm deinit`). Consumed as a library by setup-apple-spm.js; not a CLI.
  */
 
+const {readFlavoredFrameworksManifest} = require('./flavored-frameworks');
 const {
   addArrayMembers,
   addArrayStringValues,
@@ -44,6 +45,11 @@ const {
 const {makeLogger, remotePackageConfig} = require('./spm-utils');
 const fs = require('fs');
 const path = require('path');
+
+/*:: import type {
+  FlavoredFrameworkManifestEntry,
+  XcframeworkSlice,
+} from './spm-types'; */
 
 const {log} = makeLogger('generate-spm-xcodeproj');
 
@@ -86,17 +92,17 @@ const GENERATED_SOURCE_FILE_TYPES /*: {[string]: string} */ = {
 const SPM_PRODUCT_PACKAGES /*: Array<{product: string, packagePath: string, packageName: string}> */ =
   [
     {
-      product: 'ReactNative',
+      product: 'ReactHeaders',
       packagePath: 'build/xcframeworks',
       packageName: 'ReactNative',
     },
     {
-      product: 'ReactNativeDependencies',
+      product: 'ReactNativeHeaders',
       packagePath: 'build/xcframeworks',
       packageName: 'ReactNative',
     },
     {
-      product: 'hermes-engine',
+      product: 'ReactNativeDependenciesHeaders',
       packagePath: 'build/xcframeworks',
       packageName: 'ReactNative',
     },
@@ -289,12 +295,206 @@ function shellScriptPhase(
   };
 }
 
-// The node + react-native-dir resolution preamble shared by the in-target build
-// phase and the scheme pre-action. Both dispatch DIRECTLY into react-native's
+function frameworkSettingPrefix(id /*: string */) /*: string */ {
+  return `RN_SPM_${id.replace(/[^A-Za-z0-9]/g, '_').toUpperCase()}`;
+}
+
+function flavorForBuildConfiguration(
+  configurationName /*: string */,
+) /*: 'debug' | 'release' */ {
+  const lower = configurationName.toLowerCase();
+  return lower.includes('debug') || lower.includes('development')
+    ? 'debug'
+    : 'release';
+}
+
+function buildConfigurationName(
+  text /*: string */,
+  configUuid /*: string */,
+) /*: string */ {
+  const config = findObjectByUuid(text, configUuid);
+  const name = config != null ? findField(text, config, 'name') : null;
+  if (name == null) {
+    throw new Error(`pbxproj: build configuration ${configUuid} has no name`);
+  }
+  return name.value.replace(/^"|"$/g, '');
+}
+
+function frameworkConditionalSettings(
+  frameworks /*: ReadonlyArray<FlavoredFrameworkManifestEntry> */,
+) /*: Array<{key: string, value: string}> */ {
+  const settings /*: Array<{key: string, value: string}> */ = [];
+  for (const framework of frameworks) {
+    const prefix = frameworkSettingPrefix(framework.id);
+    const bySdk /*: Map<string, Array<XcframeworkSlice>> */ = new Map();
+    // The injected target is an Apple mobile/Catalyst application. Native
+    // macOS slices share `sdk=macosx*` with Catalyst and cannot be
+    // distinguished by an XCBuildConfiguration condition, so use the Catalyst
+    // slice and leave native-mac packaging out of this iOS integration.
+    for (const slice of framework.slices.filter(
+      candidate => candidate.platform !== 'macos',
+    )) {
+      const existing = bySdk.get(slice.sdk) ?? [];
+      existing.push(slice);
+      bySdk.set(slice.sdk, existing);
+    }
+    for (const [sdk, slices] of bySdk) {
+      const emit = (slice /*: XcframeworkSlice */, condition /*: string */) => {
+        const root =
+          `$(SRCROOT)/build/xcframeworks/$(RN_SPM_FLAVOR)/` +
+          `${framework.artifactRelativePath}/${slice.libraryIdentifier}`;
+        settings.push(
+          {
+            key: quoteIfNeeded(`${prefix}_FRAMEWORK${condition}`),
+            value: quoteIfNeeded(`${root}/${slice.libraryPath}`),
+          },
+          {
+            key: quoteIfNeeded(`${prefix}_BINARY${condition}`),
+            value: quoteIfNeeded(`${root}/${slice.binaryPath}`),
+          },
+          {
+            key: quoteIfNeeded(`${prefix}_SEARCH_PATH${condition}`),
+            value: quoteIfNeeded(root),
+          },
+        );
+      };
+      if (slices.length === 1) {
+        emit(slices[0], `[sdk=${sdk}]`);
+        continue;
+      }
+      const seenArchitectures /*: Set<string> */ = new Set();
+      for (const slice of slices) {
+        for (const architecture of slice.architectures) {
+          if (seenArchitectures.has(architecture)) {
+            throw new Error(
+              `${framework.frameworkName} has ambiguous ${sdk}/${architecture} slices`,
+            );
+          }
+          seenArchitectures.add(architecture);
+          emit(slice, `[sdk=${sdk}][arch=${architecture}]`);
+        }
+      }
+    }
+  }
+  return settings;
+}
+
+function frameworkArrayBuildSettings(
+  frameworks /*: ReadonlyArray<FlavoredFrameworkManifestEntry> */,
+) /*: Array<{key: string, values: Array<string>}> */ {
+  return [
+    {
+      key: 'OTHER_LDFLAGS',
+      values: [
+        '"-ObjC"',
+        ...frameworks.map(
+          framework => `"$(${frameworkSettingPrefix(framework.id)}_BINARY)"`,
+        ),
+      ],
+    },
+    {
+      key: 'FRAMEWORK_SEARCH_PATHS',
+      values: frameworks.map(
+        framework => `"$(${frameworkSettingPrefix(framework.id)}_SEARCH_PATH)"`,
+      ),
+    },
+    {
+      key: 'LD_RUNPATH_SEARCH_PATHS',
+      values: ['"@executable_path/Frameworks"'],
+    },
+  ];
+}
+
+function pbxPathList(paths /*: ReadonlyArray<string> */) /*: string */ {
+  if (paths.length === 0) {
+    return '(\n\t\t\t)';
+  }
+  return `(\n${paths
+    .map(value => `\t\t\t\t${quoteIfNeeded(value)},\n`)
+    .join('')}\t\t\t)`;
+}
+
+function buildEmbedFrameworksScript(
+  frameworks /*: ReadonlyArray<FlavoredFrameworkManifestEntry> */,
+) /*: string */ {
+  const validations = frameworks
+    .map(framework => {
+      const variable = `${frameworkSettingPrefix(framework.id)}_FRAMEWORK`;
+      return `validate_framework "\${${variable}:-}" "${framework.frameworkName}.framework"`;
+    })
+    .join('\n');
+  const copies = frameworks
+    .map(framework => {
+      const variable = `${frameworkSettingPrefix(framework.id)}_FRAMEWORK`;
+      return `copy_and_sign "\${${variable}:-}" "${framework.frameworkName}.framework"`;
+    })
+    .join('\n');
+  return `set -euo pipefail
+
+destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+mkdir -p "$destination"
+
+validate_framework() {
+  source="$1"
+  name="$2"
+  if [ -z "$source" ] || [ ! -d "$source" ]; then
+    echo "error: React Native SwiftPM framework '$name' is unavailable for configuration '$CONFIGURATION' and SDK '$SDK_NAME': $source"
+    exit 1
+  fi
+  binary="\${name%.framework}"
+  if [ ! -e "$source/$binary" ] && [ ! -e "$source/Versions/Current/$binary" ]; then
+    echo "error: React Native SwiftPM framework '$name' is invalid for configuration '$CONFIGURATION': expected $source/$binary or $source/Versions/Current/$binary"
+    exit 1
+  fi
+}
+
+copy_and_sign() {
+  source="$1"
+  name="$2"
+  /usr/bin/rsync -a --delete "$source/" "$destination/$name/"
+  if [ "\${CODE_SIGNING_ALLOWED:-YES}" != "NO" ]; then
+    identity="\${EXPANDED_CODE_SIGN_IDENTITY:--}"
+    if [ "$identity" = "-" ]; then
+      /usr/bin/codesign --force --sign - --timestamp=none --preserve-metadata=identifier,entitlements,flags "$destination/$name"
+    else
+      /usr/bin/codesign --force --sign "$identity" --preserve-metadata=identifier,entitlements,flags "$destination/$name"
+    fi
+  fi
+}
+
+${validations}
+${copies}
+`;
+}
+
+function addBuildPhaseAfter(
+  text /*: string */,
+  target /*: {bodyOpen: number, bodyClose: number, ...} */,
+  afterUuid /*: string */,
+  member /*: {uuid: string, comment: string} */,
+) /*: string */ {
+  const field = findField(text, target, 'buildPhases');
+  if (field == null || field.value.includes(member.uuid)) {
+    return text;
+  }
+  const after = new RegExp(`(^|\\n)([\\t ]*)${afterUuid}\\b[^\\n]*,`).exec(
+    field.value,
+  );
+  if (after == null) {
+    return addArrayMembers(text, target, 'buildPhases', [member]);
+  }
+  const absoluteStart = field.valueStart + after.index;
+  const lineEnd = text.indexOf('\n', absoluteStart + after[0].length);
+  const indent = after[2];
+  const line = `\n${indent}${member.uuid} /* ${member.comment} */,`;
+  return text.slice(0, lineEnd) + line + text.slice(lineEnd);
+}
+
+// The node + react-native-dir resolution preamble shared by the sync build
+// phase and scheme pre-action. Both dispatch DIRECTLY into react-native's
 // scripts rather than through 'npx react-native' — that CLI requires
 // @react-native-community/cli (absent in e.g. Expo apps), so it would exit
-// non-zero and the failure would be silently swallowed, leaving the build with
-// the wrong-flavor frameworks (Debug builds then hit 'No script URL provided').
+// non-zero and the failure would be silently swallowed.
 function nodeAndRnDirPreamble(reactNativePath /*: string */) /*: string */ {
   return `set -euo pipefail
 
@@ -335,19 +535,10 @@ fi`;
 }
 
 // Shared: the STALE-input check + conditional codegen/autolinking sync dispatch.
-// Used by BOTH the scheme pre-action (sync-only auto-heal) and the in-target
-// build phase (where it runs BETWEEN the leading + trailing flavor swaps). Kept
-// in one place so a dependency change re-syncs identically regardless of which
-// entry point fires.
+// Runtime framework slots are never touched here; add/update owns them.
 function syncStaleCheckAndDispatch() /*: string */ {
   return `STAMP="$SRCROOT/build/generated/autolinking/.spm-sync-stamp"
 STALE=0
-
-# Check 0: xcframework artifacts missing (fresh clone)
-if [ ! -f "$SRCROOT/build/xcframeworks/artifacts.json" ] || \\
-   [ ! -d "$SRCROOT/build/xcframeworks/React.xcframework" ]; then
-  STALE=1
-fi
 
 # Find project root (where package.json lives — may be an ancestor of SRCROOT)
 PROJECT_ROOT="$SRCROOT"
@@ -456,12 +647,8 @@ if [ ! -f "$STAMP" ]; then
   STALE=1
 fi
 
-# Re-sync (codegen + autolinking) when a dependency input changed. In the
-# in-target build phase this runs BETWEEN the leading and trailing flavor swaps;
-# in the scheme pre-action it runs alone (auto-heal). The sync re-pins the
-# app-local slot symlinks to the add-time flavor via generate-spm-package
-# linkOne, which is why the in-target phase's trailing swap must run AFTER it (it
-# has to be the LAST writer of those symlinks).
+# Re-sync codegen + autolinking when a dependency input changed. Runtime
+# framework slots and Xcode linker settings are only changed by spm update.
 if [ "$STALE" -eq 1 ]; then
   echo "SPM sync inputs changed — re-syncing (codegen + autolinking)..."
 
@@ -497,19 +684,13 @@ if [ "$STALE" -eq 1 ]; then
     # \`npx react-native spm scaffold\` from a terminal to generate the manifest.
     exit 1
   elif [ "$RC" -ne 0 ]; then
-    # Don't exit: fall through to the swap so the flavor pin is still corrected.
     echo "warning: SPM sync failed — build may use stale codegen/autolinking"
   fi
 fi
 `;
 }
 
-// Scheme PRE-ACTION script: sync-only (auto-heal). Re-runs codegen + autolinking
-// BEFORE Xcode resolves the SwiftPM graph so a dependency change lands in ONE
-// build. It deliberately does NOT swap flavors — that belongs to the in-target
-// build phase, where a mismatched START is detected deterministically. A
-// pre-action swap could win its race and MASK the mismatch while the graph still
-// captured stale state (a false green), so it is intentionally absent here.
+// Scheme pre-action: re-run codegen + autolinking before package resolution.
 function buildSchemePreActionScript(
   reactNativePath /*: string */,
 ) /*: string */ {
@@ -519,149 +700,17 @@ ${syncStaleCheckAndDispatch()}
 `;
 }
 
-// In-target build phase script: the swap SANDWICH + HARD-FAIL/CONVERGE.
-//
-// SwiftPM can't branch a binaryTarget on $CONFIGURATION, so — mirroring the
-// CocoaPods React-Core-prebuilt swap — swap-flavor.js (1) REPOINTS the app-local
-// + autolinking-plugin slot symlinks (the source Xcode's Embed step resolves at
-// build-graph-construction time) and (2) overwrites the SPM-copied frameworks in
-// $BUILT_PRODUCTS_DIR for the Link step.
-//
-// The in-target embed can NOT be corrected for the CURRENT build (embed runs
-// unordered vs script phases; a second .app writer races Xcode's CodeSign). So
-// when a build STARTS on the wrong flavor we HARD-FAIL + CONVERGE: the leading
-// swap corrects the pin (CLI exit 1), we capture that (MISMATCH_PENDING) without
-// aborting, the sync + trailing swap complete so state is fully correct, then we
-// fail the build ONCE at the END — the rebuild is green and nothing stale ships.
+// The in-target phase is only an autolinking safety net. Runtime framework
+// selection is expressed entirely through build settings and the independent
+// Embed React Native Flavored Frameworks phase.
 function buildSyncAutolinkingScript(
   reactNativePath /*: string */,
 ) /*: string */ {
   return `${nodeAndRnDirPreamble(reactNativePath)}
 
-# Flavor swap — defined ONCE, called TWICE (a "swap sandwich"). Sets SWAP_OK /
-# SWAP_REASON, and SWAP_CORRECTED=1 when the CLI exit code (1) signals it
-# repointed a builtin mismatch this run (a deliberate, distinct signal — genuine
-# swap crashes are swallowed by the CLI and exit 0). The loud can't-run-node
-# fallback is applied only after the FINAL (trailing) call.
-run_swap_flavor() {
-  SWAP_OK=0
-  SWAP_REASON=""
-  SWAP_CORRECTED=0
-  if [ -z "\${BUILT_PRODUCTS_DIR:-}" ]; then
-    # Not inside an Xcode build environment — nothing to swap against.
-    SWAP_OK=1
-    return 0
-  fi
-  if [ -z "$NODE_BINARY" ]; then
-    SWAP_REASON="no node binary found (set NODE_BINARY or add ios/.xcode.env)"
-    return 0
-  fi
-  if [ ! -f "$RN_DIR/scripts/setup-apple-spm.js" ]; then
-    SWAP_REASON="could not locate the react-native package (setup-apple-spm.js)"
-    return 0
-  fi
-  RC=0
-  ( cd "$SRCROOT" && "$NODE_BINARY" "$RN_DIR/scripts/setup-apple-spm.js" swap-flavor ) || RC=$?
-  if [ "$RC" -eq 0 ]; then
-    SWAP_OK=1
-  elif [ "$RC" -eq 1 ]; then
-    # The swap ran and CORRECTED a mismatched start (the app was pinned to the
-    # wrong flavor for this configuration). State is now correct; the build must
-    # still fail so the embed is redone on the (green) rebuild.
-    SWAP_OK=1
-    SWAP_CORRECTED=1
-  else
-    SWAP_REASON="swap-flavor exited non-zero ($RC)"
-  fi
-}
-
-MISMATCH_PENDING=0
-
-# Leading swap — repoints the embed source up front, BEFORE the stale check /
-# sync below. If it corrected a mismatch, remember it; do NOT abort here (sync +
-# the trailing swap must still run so state is fully converged before we fail).
-run_swap_flavor
-if [ "$SWAP_CORRECTED" -eq 1 ]; then MISMATCH_PENDING=1; fi
-
 ${syncStaleCheckAndDispatch()}
-
-# Trailing swap — the AUTHORITATIVE end-state. Runs LAST because the sync above
-# re-pins the slot symlinks to the add-time flavor via linkOne; this call
-# restores the requested flavor AND rsyncs the link-step framework copies. It is
-# NOT captured into MISMATCH_PENDING: the hard-fail means "the build STARTED
-# mismatched", which only the LEADING swap can observe. A trailing repoint just
-# undoes the sync's default re-pin (end-state correction, not a stale start), so
-# flagging it would be a false red.
-run_swap_flavor
-if [ "$SWAP_OK" -eq 0 ]; then
-  # The swap could not run. Determine — in pure shell, mirroring
-  # flavorFromConfiguration() in spm-utils.js — whether the pinned add-time
-  # flavor will ACTUALLY mismatch this configuration. RN_SPM_FLAVOR (if set to
-  # debug/release) wins outright; otherwise a case-insensitive contains-match
-  # on "debug"/"development" in CONFIGURATION selects 'debug', everything else
-  # (incl. custom config names like "Staging") selects 'release' — the same
-  # rule Xcode itself uses to map custom configuration names onto SwiftPM's
-  # .debug/.release build settings. The pinned flavor is the parent dir of the
-  # React.xcframework symlink target (.../<version>/<flavor>/React.xcframework).
-  DESIRED_FLAVOR=release
-  if [ -n "\${RN_SPM_FLAVOR:-}" ] && { [ "\$RN_SPM_FLAVOR" = "debug" ] || [ "\$RN_SPM_FLAVOR" = "release" ]; }; then
-    DESIRED_FLAVOR="\$RN_SPM_FLAVOR"
-  else
-    if [ -n "\${RN_SPM_FLAVOR:-}" ]; then
-      echo "warning: ignoring invalid RN_SPM_FLAVOR='\$RN_SPM_FLAVOR' (expected 'debug' or 'release')"
-    fi
-    case "$(printf '%s' "\${CONFIGURATION:-}" | tr '[:upper:]' '[:lower:]')" in
-      *debug*|*development*) DESIRED_FLAVOR=debug ;;
-    esac
-  fi
-  PINNED_FLAVOR=""
-  LINK_TARGET="$(readlink "$SRCROOT/build/xcframeworks/React.xcframework" 2>/dev/null || true)"
-  if [ -n "$LINK_TARGET" ]; then
-    PINNED_PARENT="$(basename "$(dirname "$LINK_TARGET")")"
-    case "$(printf '%s' "$PINNED_PARENT" | tr '[:upper:]' '[:lower:]')" in
-      debug) PINNED_FLAVOR=debug ;;
-      release) PINNED_FLAVOR=release ;;
-    esac
-  fi
-  if [ -n "$PINNED_FLAVOR" ] && [ "$PINNED_FLAVOR" != "$DESIRED_FLAVOR" ]; then
-    # A certain Debug<->release mix — known-broken, not merely suboptimal (a
-    # Debug app linking release React has RCT_DEV=0, never queries Metro, and
-    # crashes at runtime with 'No script URL provided'). Fail the build.
-    echo "error: SwiftPM flavor swap could not run ($SWAP_REASON) and the pinned $PINNED_FLAVOR frameworks do not match the $DESIRED_FLAVOR configuration — the app will misbehave (Debug builds: 'No script URL provided'). Put Node on PATH or set NODE_BINARY in ios/.xcode.env, then rebuild; or run 'npx react-native spm swap-flavor' from a terminal."
-    exit 1
-  else
-    echo "warning: SwiftPM flavor swap could not run ($SWAP_REASON); build may link the add-time flavor"
-  fi
-fi
-
-# HARD-FAIL + CONVERGE. A build that STARTED on the wrong flavor is failed ONCE,
-# here at the END — after the swaps + sync have fully corrected the pin — so the
-# rebuild is green and nothing stale ever ships. Fires only when the swap ran and
-# actually corrected a mismatch (the CLI already printed the actionable error:).
-if [ "$MISMATCH_PENDING" -eq 1 ]; then
-  # Best-effort: this deliberate red build already PLANNED against the pre-flip
-  # graph, precompiling Swift explicit modules from the debug -Onone interfaces
-  # (which depend on SwiftOnoneSupport). Those caches are NOT keyed by anything
-  # the flavor flip changed, so the Release rebuild would reuse them and fail
-  # ('missing required module SwiftOnoneSupport'). Drop them so the rebuild
-  # re-precompiles against the corrected graph. XCBuildData MUST go WITH the pcm
-  # dirs: it holds the build-description / dependency-scan state that references
-  # the precompiled modules by ABSOLUTE path, so deleting the pcm dirs alone
-  # strands the rebuild ('module file .../….pcm not found'), and deleting
-  # XCBuildData alone leaves the stale debug pcms in place — both directions are
-  # empirically proven broken, so all three are cleared together. Both pcm dir
-  # namings exist across Xcode versions; guarded + '|| true' so it can NEVER mask
-  # the deliberate build failure below.
-  if [ -n "\${OBJROOT:-}" ]; then
-    echo "Invalidating Swift explicit-module + build-description caches so the rebuild re-precompiles against the switched flavor..."
-    rm -rf "$OBJROOT/ExplicitPrecompiledModules" "$OBJROOT/SwiftExplicitPrecompiledModules" "$OBJROOT/XCBuildData" 2>/dev/null || true
-  fi
-  echo "error: React Native SwiftPM frameworks were on the wrong flavor for this \${CONFIGURATION:-} build and have been switched — build again (one-time after a configuration change)."
-  exit 1
-fi
 `;
 }
-
 // XML-attribute escape (the five named entities). The sync script uses `>`
 // and `&` for redirection and bg/and chains, plus `<` for heredocs and
 // comparisons — all of which break Xcode's scheme parser if left raw.
@@ -880,14 +929,6 @@ const INJECTED_ARRAY_SETTINGS = [
     key: 'HEADER_SEARCH_PATHS',
     values: ['"$(SRCROOT)/build/generated/autolinking/headers"'],
   },
-  {key: 'OTHER_LDFLAGS', values: ['"-ObjC"']},
-  {
-    key: 'OTHER_SWIFT_FLAGS',
-    values: [
-      '"-Xcc"',
-      '"-fmodule-map-file=$(BUILT_PRODUCTS_DIR)/React.framework/Modules/module.modulemap"',
-    ],
-  },
 ];
 
 /** The XCBuildConfiguration UUIDs of a target (via its buildConfigurationList). */
@@ -1035,6 +1076,7 @@ function injectSpmIntoPbxproj(
   remote /*: ?RemoteCfg */,
   hermesCliPath /*: ?string */ = null,
   generatedSources /*: ReadonlyArray<GeneratedSource> */ = [],
+  flavoredFrameworks /*: ReadonlyArray<FlavoredFrameworkManifestEntry> */ = [],
 ) /*: {text: string, injectedUuids: Array<string>, createdArrayFields: Array<{container: 'project' | 'target', key: string}>, buildSettingChanges: Array<BuildSettingChange>, generatedSourceUuids: {[string]: Array<string>}} */ {
   let text = input;
   const mkUuid = (section /*: string */, id /*: string */) =>
@@ -1132,8 +1174,10 @@ function injectSpmIntoPbxproj(
     const merged = mergeReactBuildSettings(
       text,
       configUuid,
+      buildConfigurationName(text, configUuid),
       reactNativePath,
       hermesCliPath,
+      flavoredFrameworks,
     );
     text = merged.text;
     buildSettingChanges.push(merged.change);
@@ -1177,22 +1221,60 @@ function injectSpmIntoPbxproj(
     {prepend: true},
   );
 
-  // 7. MIGRATION: earlier versions APPENDED a "Fix SPM Embedded Flavor" phase to
-  //    correct the embedded framework flavor AFTER Xcode's implicit SPM Embed.
-  //    That is impossible to do reliably (embed runs unordered vs script phases;
-  //    a second .app writer races Xcode's CodeSign), so RN no longer writes the
-  //    .app at all — the flavor mismatch is handled by HARD-FAIL + CONVERGE
-  //    instead. We no longer inject the phase, and we actively REMOVE any that a
-  //    prior `add`/`update` left (object + buildPhases membership). Its UUID is
-  //    deliberately NOT recorded in injectedUuids, so the marker drops it too;
-  //    existing apps heal on their next `spm update`. Both removals are no-ops on
-  //    a project that never had it (a fresh injection stays byte-identical).
-  const legacyEmbeddedFixPhaseUuid = mkUuid(
+  // 7. The sole writer of flavored frameworks under the final app bundle.
+  //    SwiftPM owns only invariant header/source products, so no implicit SPM
+  //    embed task competes with this phase.
+  const embedPhaseUuid = mkUuid(
     'PBXShellScriptBuildPhase',
-    'FixEmbeddedFlavor',
+    'EmbedFlavoredFrameworks',
   );
-  text = removeArrayMembersByUuid(text, [legacyEmbeddedFixPhaseUuid]);
-  text = removeObjectByUuid(text, legacyEmbeddedFixPhaseUuid);
+  const embedScript = buildEmbedFrameworksScript(flavoredFrameworks);
+  const embedInputs = [
+    '$(SRCROOT)/build/xcframeworks/.artifact-stamp',
+    ...flavoredFrameworks.map(
+      framework => `$(${frameworkSettingPrefix(framework.id)}_FRAMEWORK)`,
+    ),
+  ];
+  const embedOutputs = flavoredFrameworks.map(
+    framework =>
+      `$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/${framework.frameworkName}.framework`,
+  );
+  const embedEntry = shellScriptPhase(
+    embedPhaseUuid,
+    'Embed React Native Flavored Frameworks',
+    embedScript,
+    {
+      inputPaths: pbxPathList(embedInputs),
+      outputPaths: pbxPathList(embedOutputs),
+    },
+  );
+  if (!text.includes(embedPhaseUuid)) {
+    text = insertObjectsIntoSection(
+      text,
+      'PBXShellScriptBuildPhase',
+      serializeEntry(embedEntry),
+    );
+  } else {
+    const existingPhase = findObjectByUuid(text, embedPhaseUuid);
+    if (existingPhase != null) {
+      for (const key of ['shellScript', 'inputPaths', 'outputPaths']) {
+        const current = findObjectByUuid(text, embedPhaseUuid);
+        if (current != null) {
+          text = setScalarField(text, current, key, embedEntry.fields[key]);
+        }
+      }
+    }
+  }
+  injectedUuids.push(embedPhaseUuid);
+  text = addBuildPhaseAfter(
+    text,
+    findApplicationTargetByUuid(text, plan.targetUuid),
+    plan.frameworksPhaseUuid,
+    {
+      uuid: embedPhaseUuid,
+      comment: 'Embed React Native Flavored Frameworks',
+    },
+  );
 
   // 8. Plugin generated sources compiled INTO THE APP TARGET (e.g. Expo's
   //    ExpoModulesProvider.swift). An `@objc` class only reaches the ObjC
@@ -1371,8 +1453,10 @@ function resolveHermesCliPathSetting(
 function mergeReactBuildSettings(
   input /*: string */,
   configUuid /*: string */,
+  configurationName /*: string */,
   reactNativePath /*: string */,
   hermesCliPath /*: ?string */ = null,
+  flavoredFrameworks /*: ReadonlyArray<FlavoredFrameworkManifestEntry> */ = [],
 ) /*: {text: string, change: BuildSettingChange} */ {
   let text = input;
   const scalars = [
@@ -1409,7 +1493,11 @@ function mergeReactBuildSettings(
   const createdArrayKeys /*: Array<string> */ = [];
   const appendedArrayValues /*: {[string]: Array<string>} */ = {};
   const createdScalars /*: Array<string> */ = [];
-  for (const {key, values} of INJECTED_ARRAY_SETTINGS) {
+  const arraySettings = [
+    ...INJECTED_ARRAY_SETTINGS,
+    ...frameworkArrayBuildSettings(flavoredFrameworks),
+  ];
+  for (const {key, values} of arraySettings) {
     const d = dict();
     if (d == null) {
       continue;
@@ -1453,6 +1541,26 @@ function mergeReactBuildSettings(
       continue;
     }
     text = ensureScalarField(text, d, key, value);
+  }
+  const ownedScalars = [
+    {
+      key: 'RN_SPM_FLAVOR',
+      value: flavorForBuildConfiguration(configurationName),
+    },
+    ...frameworkConditionalSettings(flavoredFrameworks),
+  ];
+  for (const {key, value} of ownedScalars) {
+    const d = dict();
+    if (d == null) {
+      continue;
+    }
+    const existing = findField(text, d, key);
+    if (existing == null) {
+      createdScalars.push(key);
+    } else if (existing.value !== value) {
+      replacedScalars[key] = existing.value;
+    }
+    text = setScalarField(text, d, key, value);
   }
   return {
     text,
@@ -1736,7 +1844,7 @@ function readGeneratedSourcesManifest(
  */
 function readMarker(
   xcodeprojPath /*: string */,
-) /*: ?{generatedSources?: {[string]: Array<string>}, artifactsVersionOverride?: ?string, ...} */ {
+) /*: ?{generatedSources?: {[string]: Array<string>}, artifactsVersionOverride?: ?string, buildSettingChanges?: Array<BuildSettingChange>, ...} */ {
   const markerPath = path.join(xcodeprojPath, SPM_INJECTED_MARKER);
   try {
     // $FlowFixMe[incompatible-return] JSON.parse returns any
@@ -1816,6 +1924,7 @@ function injectSpmIntoExistingXcodeproj(
   const remote = remotePackageConfig(appRoot);
   const hermesCliPath = resolveHermesCliPathSetting(reactNativeRoot);
   const generatedSources = readGeneratedSourcesManifest(appRoot);
+  const flavoredFrameworks = readFlavoredFrameworksManifest(appRoot).frameworks;
 
   const prevMarker = readMarker(xcodeprojPath);
 
@@ -1844,7 +1953,13 @@ function injectSpmIntoExistingXcodeproj(
       namespacedUUID(plan.rootUuid, 'PBXGroup', SPM_GENERATED_SOURCES_GROUP_ID),
     );
   }
-  let base = original;
+  // Re-apply generated settings from a clean recorded baseline. This removes
+  // linker entries for plugin frameworks that disappeared and keeps the new
+  // marker a complete inverse after an idempotent update.
+  let base = removeRecordedBuildSettings(
+    original,
+    prevMarker?.buildSettingChanges ?? [],
+  );
   if (staleUuids.length > 0) {
     base = removeArrayMembersByUuid(base, staleUuids);
     for (const u of staleUuids) {
@@ -1871,6 +1986,7 @@ function injectSpmIntoExistingXcodeproj(
     remote,
     hermesCliPath,
     generatedSources,
+    flavoredFrameworks,
   );
 
   const changed = writeIfChanged(pbxprojPath, text);
@@ -1949,6 +2065,69 @@ function removePreActionFromScheme(xml /*: string */) /*: string */ {
   return withoutAction.replace(/\n[ \t]*<PreActions>\s*<\/PreActions>/, '');
 }
 
+function removeRecordedBuildSettings(
+  input /*: string */,
+  changes /*: ReadonlyArray<BuildSettingChange> */,
+) /*: string */ {
+  let text = input;
+  for (const change of changes) {
+    const dict = () => {
+      const config = findObjectByUuid(text, change.configUuid);
+      if (config == null) {
+        return null;
+      }
+      const buildSettings = findField(text, config, 'buildSettings');
+      if (buildSettings == null) {
+        return null;
+      }
+      return {
+        uuid: change.configUuid,
+        bodyOpen: buildSettings.valueStart,
+        bodyClose: buildSettings.tokenEnd - 1,
+      };
+    };
+    for (const key of Object.keys(change.appendedArrayValues ?? {})) {
+      const current = dict();
+      if (current != null) {
+        text = removeArrayStringValues(
+          text,
+          current,
+          key,
+          change.appendedArrayValues[key],
+        );
+      }
+    }
+    for (const key of change.createdArrayKeys ?? []) {
+      const current = dict();
+      if (current != null) {
+        text = removeField(text, current, key);
+      }
+    }
+    for (const key of change.createdScalars ?? []) {
+      const current = dict();
+      if (current != null) {
+        text = removeField(text, current, key);
+      }
+    }
+    const replacedScalars /*: {[string]: string} */ =
+      change.replacedScalars ?? {};
+    for (const key of Object.keys(replacedScalars)) {
+      const current = dict();
+      if (current != null) {
+        text = removeField(text, current, key);
+        const replacement = dict();
+        if (replacement != null) {
+          const originalValue = replacedScalars[key];
+          if (typeof originalValue === 'string') {
+            text = ensureScalarField(text, replacement, key, originalValue);
+          }
+        }
+      }
+    }
+  }
+  return text;
+}
+
 /**
  * The exact inverse of `add` (injectSpmIntoExistingXcodeproj): using the
  * `.spm-injected.json` marker's precise record of every edit, remove only what
@@ -1995,58 +2174,7 @@ function removeSpmInjection(
   );
 
   // 2. Reverse the per-config build-setting edits (only what we added).
-  for (const change of marker.buildSettingChanges ?? []) {
-    const dict = () => {
-      const cfg = findObjectByUuid(text, change.configUuid);
-      if (cfg == null) {
-        return null;
-      }
-      const bs = findField(text, cfg, 'buildSettings');
-      if (bs == null) {
-        return null;
-      }
-      return {
-        uuid: change.configUuid,
-        bodyOpen: bs.valueStart,
-        bodyClose: bs.tokenEnd - 1,
-      };
-    };
-    for (const key of Object.keys(change.appendedArrayValues ?? {})) {
-      const d = dict();
-      if (d != null) {
-        text = removeArrayStringValues(
-          text,
-          d,
-          key,
-          change.appendedArrayValues[key],
-        );
-      }
-    }
-    for (const key of change.createdArrayKeys ?? []) {
-      const d = dict();
-      if (d != null) {
-        text = removeField(text, d, key);
-      }
-    }
-    for (const key of change.createdScalars ?? []) {
-      const d = dict();
-      if (d != null) {
-        text = removeField(text, d, key);
-      }
-    }
-    const replaced = change.replacedScalars ?? {};
-    for (const key of Object.keys(replaced)) {
-      const d = dict();
-      if (d != null) {
-        text = removeField(text, d, key);
-        const d2 = dict();
-        if (d2 != null) {
-          text = ensureScalarField(text, d2, key, replaced[key]);
-        }
-      }
-    }
-  }
-
+  text = removeRecordedBuildSettings(text, marker.buildSettingChanges ?? []);
   writeIfChanged(pbxprojPath, text);
   log(`Removed SPM injection from ${path.relative(appRoot, pbxprojPath)}`);
 
@@ -2076,6 +2204,9 @@ module.exports = {
   generateXcscheme,
   buildSyncAutolinkingScript,
   buildSchemePreActionScript,
+  buildEmbedFrameworksScript,
+  flavorForBuildConfiguration,
+  frameworkConditionalSettings,
   ensureStubPackages,
   buildSpmDependencyGraph,
   spmGraphToEntries,

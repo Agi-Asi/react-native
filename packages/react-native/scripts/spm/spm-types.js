@@ -12,19 +12,9 @@
 export type SetupArgs = {
   action: 'add' | 'update' | 'deinit' | 'sync' | 'codegen' | 'download' | 'scaffold' | null,
   version: string | null,
-  // Local artifact source (advanced). A `.xcframework` file → use it directly
-  // (no download); a directory → cache dir (read if populated, download there
-  // if empty). Replaces the old --local-xcframework + --artifacts-dir pair.
+  // Local two-flavor artifact source (advanced). The directory contains
+  // `debug/` and `release/` cache slots, each with artifacts.json.
   artifacts: string | null,
-  // The EXPLICIT --flavor request, or null when the flag was omitted. Kept
-  // separate from `flavor` (below) so main() can tell "the user asked for
-  // this" apart from "nothing was requested" when resolving the flavor to
-  // use — see resolveFlavor in setup-apple-spm.js.
-  explicitFlavor: string | null,
-  // The RESOLVED artifact flavor for this run ('debug' | 'release'). Not
-  // meaningful until main() calls resolveFlavor(args.explicitFlavor, appRoot)
-  // and assigns the result here, before any downstream consumer reads it.
-  flavor: string,
   skipCodegen: boolean,
   // Artifact download policy: 'auto' fetches when missing, 'skip' never
   // fetches, 'force' clears the cache slot and re-downloads.
@@ -73,9 +63,6 @@ export type AutolinkingArgs = {
   autolinkingJson: string | null,
   output: string | null,
   xcframeworksPath: string | null,
-  // Artifact flavor, threaded into the plugin context (frameworks pick their
-  // per-flavor precompiled xcframework slice). Defaults to 'debug'.
-  flavor: 'debug' | 'release',
 };
 
 export type SpmTarget = {
@@ -229,18 +216,45 @@ export type PluginProductDep = {name: string, package: string};
 // in the codegen package so it compiles.
 export type PluginGeneratedSource = {path: string};
 
-// A plugin-declared precompiled xcframework that exists in debug/release flavor
-// pairs — the same "binaryTarget can't branch on $CONFIGURATION" problem as RN's
-// own React / hermes / ReactNativeDependencies. `link` is a PLUGIN-OWNED stable
-// symlink the plugin's binaryTarget references; RN only ever repoints it (never
-// creates or deletes it — `spm deinit` leaves it alone). `flavors` holds the
-// absolute per-flavor xcframework paths — a flavor may be absent (not derivable)
-// and a present path may not exist on disk yet (not built), both checked at swap
-// time by swap-flavor.js.
-export type PluginFlavoredArtifact = {
-  name: string,
-  link: string,
-  flavors: {debug?: string, release?: string},
+// A plugin-declared dynamic XCFramework pair. RN validates both paths, stages
+// immutable app-local slots, and links/embeds the selected framework outside
+// SwiftPM.
+export type PluginFlavoredFramework = {
+  id: string,
+  frameworkName: string,
+  linkage: 'dynamic',
+  flavors: {debug: string, release: string},
+};
+
+export type XcframeworkSlice = {
+  sdk: string,
+  platform: string,
+  variant: ?string,
+  architectures: Array<string>,
+  libraryIdentifier: string,
+  libraryPath: string,
+  binaryPath: string,
+};
+
+export type ParsedXcframework = {
+  path: string,
+  frameworkName: string,
+  executableName: string,
+  slices: Array<XcframeworkSlice>,
+};
+
+export type FlavoredFrameworkManifestEntry = {
+  id: string,
+  frameworkName: string,
+  executableName: string,
+  linkage: 'dynamic',
+  artifactRelativePath: string,
+  slices: Array<XcframeworkSlice>,
+};
+
+export type FlavoredFrameworksManifest = {
+  version: 1,
+  frameworks: Array<FlavoredFrameworkManifestEntry>,
 };
 
 // How a plugin depends on React — the single source of truth so a plugin's
@@ -271,7 +285,6 @@ export type PluginContext = {
   reactNativeRoot: string,
   autolinking: {readonly [string]: unknown},
   outputDir: string,
-  flavor: 'debug' | 'release',
   // How to depend on React (package ref + product set); null only when there is
   // no resolvable React dependency at all.
   react: ?ReactDescriptor,
@@ -281,7 +294,7 @@ export type PluginResult = {
   packageDependencies: Array<PluginPackageDep>,
   productDependencies: Array<PluginProductDep>,
   generatedSources: Array<PluginGeneratedSource>,
-  flavoredArtifacts: Array<PluginFlavoredArtifact>,
+  flavoredFrameworks: Array<PluginFlavoredFramework>,
   // Absolute paths (dirs or files) the Xcode auto-sync build phase should watch
   // for staleness, e.g. the plugin dep's own `Package.swift` and per-module
   // manifests. Folded into `.spm-sync-watch-paths` by main().
@@ -292,7 +305,7 @@ export type SpmAutolinkingPlugin = (context: PluginContext) => ?{
   packageDependencies?: Array<PluginPackageDep>,
   productDependencies?: Array<PluginProductDep>,
   generatedSources?: Array<PluginGeneratedSource>,
-  flavoredArtifacts?: Array<PluginFlavoredArtifact>,
+  flavoredFrameworks?: Array<PluginFlavoredFramework>,
   watchPaths?: Array<string>,
 };
 
@@ -338,8 +351,8 @@ export type GeneratePackageArgs = {
   appRoot: string,
   reactNativeRoot: string | null,
   version: string | null,
-  localXcframework: string | null,
-  artifactsDir: string | null,
+  debugArtifactsDir: string | null,
+  releaseArtifactsDir: string | null,
   appName: string | null,
   targetName: string | null,
   sourcePath: string | null,
@@ -441,7 +454,7 @@ export type SpmScaffoldSpec = {
   needsObjCPrefix: boolean,
   // Bucketed dependency references — pre-computed by the translation layer.
   // `coreReactNative` is true when ANY React-* / RCT* / RCT-Folly / glog
-  // dep is present (so we add a single `.product(name: "ReactNative", ...)`).
+  // dep is present (so we add React's invariant header products).
   // `siblingNames` are npm names that match other autolinked deps — resolved
   // to Swift names by the scaffold orchestrator before emit.
   coreReactNative: boolean,

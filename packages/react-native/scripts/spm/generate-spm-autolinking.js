@@ -16,7 +16,7 @@
   AutolinkingArgs,
   DiscoveredPlugin,
   NpmDepRef,
-  PluginFlavoredArtifact,
+  PluginFlavoredFramework,
   PluginPackageDep,
   PluginProductDep,
   ReactDescriptor,
@@ -77,8 +77,8 @@ const yargs = require('yargs');
 const {log, warn} = makeLogger('generate-spm-autolinking');
 
 // Targets compiling against React get all headers via SPM product
-// dependencies — no search-path flags: React/react namespaces from the React
-// binaryTarget, every other RN namespace from the ReactNativeHeaders
+// dependencies — no search-path flags: the React module from the invariant
+// ReactHeaders Clang target, every other RN namespace from ReactNativeHeaders
 // binaryTarget (pure-RN), the third-party deps namespaces (folly/glog/
 // boost/...) from the ReactNativeDependenciesHeaders sidecar, and the app's
 // generated headers from the ReactAppHeaders target in the codegen package.
@@ -97,14 +97,14 @@ function reactNativePackageDecl(localDecl /*: string */) /*: string */ {
     : localDecl;
 }
 // The React product set — single source of truth shared by reactProductDeps()
-// (the emitted string) and the plugin ReactDescriptor. The three ReactNative
+// (the emitted string) and the plugin ReactDescriptor. The invariant ReactNative
 // products come from the RN package (identity varies local vs remote);
 // ReactAppHeaders is in the separate, per-app React-GeneratedCode package
 // (easy to miss when hand-rolling — hence exposing it to plugins).
 function reactProducts() /*: Array<{name: string, package: string}> */ {
   const rn = reactNativePackageLabel();
   return [
-    {name: 'ReactNative', package: rn},
+    {name: 'ReactHeaders', package: rn},
     {name: 'ReactNativeHeaders', package: rn},
     {name: 'ReactNativeDependenciesHeaders', package: rn},
     {name: 'ReactAppHeaders', package: 'React-GeneratedCode'},
@@ -191,11 +191,6 @@ function parseArgs(argv /*: Array<string> */) /*: AutolinkingArgs */ {
       describe:
         'Path to the xcframeworks sub-package (absolute or relative to appRoot)',
     })
-    .option('flavor', {
-      type: 'string',
-      default: 'debug',
-      describe: 'Artifact flavor (debug or release), passed to plugins',
-    })
     .usage(
       'Usage: $0 [options]\n\nGenerates autolinked/Package.swift for SPM autolinking.',
     )
@@ -208,7 +203,6 @@ function parseArgs(argv /*: Array<string> */) /*: AutolinkingArgs */ {
     autolinkingJson: parsed['autolinking-json'] ?? null,
     output: parsed.output ?? null,
     xcframeworksPath: parsed['xcframeworks-path'] ?? null,
-    flavor: parsed.flavor === 'release' ? 'release' : 'debug',
   };
 }
 
@@ -854,7 +848,7 @@ function autolinkingDepToSpmTarget(
  * xcframeworksRelPath – path to the xcframeworks sub-package relative to the
  *   autolinked/ directory (e.g. "../build/xcframeworks"). When non-null a
  *   React dependency is declared. Headers need no search paths — React/react
- *   come from the React binaryTarget, every other RN namespace from
+ *   come from the ReactHeaders target, every other RN namespace from
  *   ReactNativeHeaders, folly/glog/boost from ReactNativeDependenciesHeaders,
  *   and the app's generated headers from the ReactAppHeaders product — so
  *   <React/...>, <ReactCommon/...>, <react/renderer/...>, folly/glog/boost,
@@ -1039,7 +1033,7 @@ ${packageDepsBlock}    targets: [
  * the caller (`reactNativePackagePath` / `codegenPackagePath`), computed from
  * the synth's fixed location under the autolinking dir — the manifest holds no
  * runtime discovery and no absolute paths. Headers are served by the
- * React/ReactNativeHeaders/ReactNativeDependenciesHeaders binaryTargets and
+ * ReactHeaders/ReactNativeHeaders/ReactNativeDependenciesHeaders targets and
  * the ReactAppHeaders product, so no
  * search-path flags are needed. Siblings use their absolute synth path from
  * `siblingSynthAbsolutePaths` (production) or a `siblingPackageBaseRelative`
@@ -1368,7 +1362,7 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
   }
 
   // Whether autolinked targets declare a React dependency at all. Headers are
-  // served by the React/ReactNativeHeaders/ReactNativeDependenciesHeaders
+  // served by the ReactHeaders/ReactNativeHeaders/ReactNativeDependenciesHeaders
   // binaryTargets and the ReactAppHeaders product — no `-I` flags anywhere.
   const hasReactDep = xcframeworksRelPath != null;
 
@@ -1690,7 +1684,7 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
   let pluginPackageDeps /*: Array<PluginPackageDep> */ = [];
   let pluginProductDeps /*: Array<PluginProductDep> */ = [];
   let pluginGeneratedSources /*: Array<{path: string}> */ = [];
-  let pluginFlavoredArtifacts /*: Array<PluginFlavoredArtifact> */ = [];
+  let pluginFlavoredFrameworks /*: Array<PluginFlavoredFramework> */ = [];
   let pluginWatchPaths /*: Array<string> */ = [];
   if (discoveredPlugins.length > 0) {
     // React-GeneratedCode is the per-app codegen package (referenced as
@@ -1707,7 +1701,6 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
         reactNativeRoot: rnRoot,
         autolinking: autolinkingData ?? {},
         outputDir,
-        flavor: args.flavor,
         react: reactDescriptor(
           absXcframeworks,
           xcframeworksRelPath,
@@ -1719,21 +1712,19 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
     pluginPackageDeps = result.packageDependencies;
     pluginProductDeps = result.productDependencies;
     pluginGeneratedSources = result.generatedSources;
-    pluginFlavoredArtifacts = result.flavoredArtifacts;
+    pluginFlavoredFrameworks = result.flavoredFrameworks;
     pluginWatchPaths = result.watchPaths;
     log(
       `SPM plugins contributed ${pluginPackageDeps.length} package(s), ` +
         `${pluginProductDeps.length} product(s), ` +
         `${pluginGeneratedSources.length} generated source(s), ` +
-        `${pluginFlavoredArtifacts.length} flavored artifact(s)`,
+        `${pluginFlavoredFrameworks.length} flavored framework(s)`,
     );
   }
 
   // Plugin sidecars. Both are ALWAYS written — even `[]` — so removing a
-  // plugin (or dropping its declaration) clears stale entries: the injector's
-  // generated-source reconciliation retires pbxproj entries, and swap-flavor
-  // stops repointing a now-gone link. Machine-local absolute paths; gitignored
-  // + regenerated every sync, same as the other sidecars.
+  // plugin (or dropping its declaration) clears stale entries. Machine-local
+  // absolute paths; gitignored + regenerated every sync.
   fs.mkdirSync(outputDir, {recursive: true});
   // Generated-source registration (e.g. Expo's ExpoModulesProvider.swift),
   // consumed by the injector at add/update time — the provider ordering
@@ -1743,10 +1734,11 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
     JSON.stringify(pluginGeneratedSources, null, 2) + '\n',
     'utf8',
   );
-  // Flavored-artifact sidecar for the build-time swap-flavor pass.
+  // Flavored-framework sidecar consumed by `spm add` / `spm update` when it
+  // regenerates the app's linker settings and sole embed phase.
   fs.writeFileSync(
-    path.join(outputDir, '.spm-plugin-flavored-artifacts.json'),
-    JSON.stringify(pluginFlavoredArtifacts, null, 2) + '\n',
+    path.join(outputDir, '.spm-plugin-flavored-frameworks.json'),
+    JSON.stringify(pluginFlavoredFrameworks, null, 2) + '\n',
     'utf8',
   );
 
