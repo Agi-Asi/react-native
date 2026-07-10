@@ -20,6 +20,7 @@
 const {
   buildI18nStringsBundle,
   buildReactPrivacyManifest,
+  collectLprojDirs,
   serializePrivacyManifest,
 } = require('./framework-resources');
 const {computeInventory} = require('./headers-inventory');
@@ -152,12 +153,18 @@ function emitReactFrameworkHeaders(
 
   // Build RCTI18nStrings.bundle ONCE into a temp stage, then clone it into each
   // slice below — mirrors the privacy manifest (computed once, embedded per
-  // slice) instead of rebuilding the bundle inside the slice loop.
-  const i18nStage = fs.mkdtempSync(
-    path.join(path.dirname(xcfwPath), '.i18n-stage-'),
-  );
-  const i18nBundleStage = path.join(i18nStage, 'RCTI18nStrings.bundle');
-  const i18nLocales = buildI18nStringsBundle(rnRoot, i18nBundleStage);
+  // slice) instead of rebuilding the bundle inside the slice loop. The stage is
+  // only created when there are locales to bundle.
+  let i18nStage = null;
+  let i18nBundleStage = null;
+  let i18nLocales = 0;
+  if (collectLprojDirs(rnRoot).length > 0) {
+    i18nStage = fs.mkdtempSync(
+      path.join(path.dirname(xcfwPath), '.i18n-stage-'),
+    );
+    i18nBundleStage = path.join(i18nStage, 'RCTI18nStrings.bundle');
+    i18nLocales = buildI18nStringsBundle(rnRoot, i18nBundleStage);
+  }
 
   for (const slice of slices) {
     const fwk = path.join(xcfwPath, slice, 'React.framework');
@@ -177,14 +184,16 @@ function emitReactFrameworkHeaders(
     }
     // Clone the prebuilt RCTI18nStrings.bundle so the framework-aware
     // RCTLocalizedString loader resolves React-Core's strings in prebuilt/SPM.
-    if (i18nLocales > 0) {
+    if (i18nLocales > 0 && i18nBundleStage != null) {
       const dest = path.join(fwk, 'RCTI18nStrings.bundle');
       fs.rmSync(dest, {recursive: true, force: true});
       execFileSync('/bin/cp', [CP_FLAGS, i18nBundleStage, dest]);
     }
   }
   fs.rmSync(stage, {recursive: true, force: true});
-  fs.rmSync(i18nStage, {recursive: true, force: true});
+  if (i18nStage != null) {
+    fs.rmSync(i18nStage, {recursive: true, force: true});
+  }
   console.log(
     `headers-compose: React.framework spec layout -> ${slices.join(', ')} ` +
       `(${plan.react.length} headers, umbrella ${plan.umbrella.length}` +

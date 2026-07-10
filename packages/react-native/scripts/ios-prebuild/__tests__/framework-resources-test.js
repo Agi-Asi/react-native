@@ -184,6 +184,43 @@ describe('serialize/read privacy-manifest round-trip', () => {
   });
 });
 
+describe('collectReactPrivacyManifestPaths drift gate', () => {
+  let tmp;
+
+  beforeEach(() => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'privacy-gate-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmp, {recursive: true, force: true});
+  });
+
+  function writeManifest(rel) {
+    const file = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(file), {recursive: true});
+    fs.writeFileSync(file, serializePrivacyManifest(reactCore));
+    return file;
+  }
+
+  it('throws when a manifest under the privacy roots is not allowlisted (a new pod must be a conscious decision)', () => {
+    writeManifest('React/Resources/PrivacyInfo.xcprivacy');
+    writeManifest('Libraries/SomeNewPod/PrivacyInfo.xcprivacy');
+    expect(() => collectReactPrivacyManifestPaths(tmp)).toThrow(/SomeNewPod/);
+    expect(() => collectReactPrivacyManifestPaths(tmp)).toThrow(
+      /REACT_PRIVACY_MANIFESTS/,
+    );
+  });
+
+  it('returns the found subset of allowlisted manifests (partial trees stay valid)', () => {
+    const file = writeManifest('React/Resources/PrivacyInfo.xcprivacy');
+    expect(collectReactPrivacyManifestPaths(tmp)).toEqual([file]);
+  });
+
+  it('returns [] for a tree with no manifests', () => {
+    expect(collectReactPrivacyManifestPaths(tmp)).toEqual([]);
+  });
+});
+
 describe('buildReactPrivacyManifest (against the real source tree)', () => {
   it('discovers React-core PrivacyInfo.xcprivacy files (not third-party deps)', () => {
     const paths = collectReactPrivacyManifestPaths(RN_PATH);

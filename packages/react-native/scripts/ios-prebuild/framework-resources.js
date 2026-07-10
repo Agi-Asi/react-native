@@ -33,6 +33,19 @@ const plist = require('plist');
 // ReactNativeDependencies.xcframework and are aggregated there.
 const REACT_PRIVACY_ROOTS = ['React', 'ReactCommon', 'Libraries', 'ReactApple'];
 
+// The privacy manifests of the pods that compile INTO React.framework —
+// an EXPLICIT allowlist, not a glob: a PrivacyInfo.xcprivacy that appears
+// under REACT_PRIVACY_ROOTS without being listed here fails the prebuild,
+// forcing a conscious decision. A pod whose sources compile into
+// React.framework belongs on this list; a pod that ships as its OWN framework
+// must NOT have its manifest folded into React.framework's aggregate
+// (over-declaration in the app's privacy report).
+const REACT_PRIVACY_MANIFESTS = [
+  path.join('React', 'Resources', 'PrivacyInfo.xcprivacy'),
+  path.join('ReactCommon', 'cxxreact', 'PrivacyInfo.xcprivacy'),
+  path.join('ReactCommon', 'react', 'timing', 'PrivacyInfo.xcprivacy'),
+];
+
 // Where React-Core's localized strings live, relative to the package root.
 const STRINGS_REL = path.join('React', 'I18n', 'strings');
 
@@ -122,6 +135,9 @@ function mergePrivacyManifests(
     for (const dataType of manifest.NSPrivacyCollectedDataTypes ?? []) {
       // Canonicalize (sort object keys recursively) before keying so two pods
       // declaring the same data-type dict in different key order still dedup.
+      // The `?? ''` is unreachable at runtime (canonicalize of a plist dict
+      // never yields undefined) — it exists purely because Flow types
+      // JSON.stringify as `string | void`.
       const key = JSON.stringify(canonicalize(dataType)) ?? '';
       if (!collectedSeen.has(key)) {
         collectedSeen.add(key);
@@ -174,11 +190,27 @@ function collectReactPrivacyManifestPaths(
     }
     for (const rel of fs.readdirSync(dir, {recursive: true})) {
       if (path.basename(String(rel)) === 'PrivacyInfo.xcprivacy') {
-        found.push(path.join(dir, String(rel)));
+        found.push(path.join(root, String(rel)));
       }
     }
   }
-  return found.sort();
+  const unlisted = found.filter(rel => !REACT_PRIVACY_MANIFESTS.includes(rel));
+  if (unlisted.length > 0) {
+    throw new Error(
+      'React.framework privacy-manifest drift: found PrivacyInfo.xcprivacy ' +
+        'file(s) under the React privacy roots that are not allowlisted:\n' +
+        unlisted.map(rel => `  ${rel}`).join('\n') +
+        '\nIf the owning pod compiles into React.framework, add the path to ' +
+        'REACT_PRIVACY_MANIFESTS in framework-resources.js. If it ships as ' +
+        'its own framework, its manifest must NOT be folded into ' +
+        "React.framework's aggregate — relocate it out of the privacy roots " +
+        'or exclude it explicitly.',
+    );
+  }
+  // A listed-but-absent manifest is legal (partial fixture trees; upstream
+  // deletions surface as under-declaration exactly like source builds would).
+  // A MOVED manifest cannot slip through: its new location is unlisted.
+  return found.map(rel => path.join(reactNativePath, rel)).sort();
 }
 
 /**
