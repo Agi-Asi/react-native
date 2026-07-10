@@ -24,9 +24,8 @@ describe('COMPOSE_TOOLING_FILES stays in sync with headers-compose.js requires',
       'utf8',
     );
     const requireRe = /require\('\.\/([\w-]+)'\)/g;
-    const required = new Set();
-    let match;
-    while ((match = requireRe.exec(source)) != null) {
+    const required = new Set<string>();
+    for (const match of source.matchAll(requireRe)) {
       required.add(`${match[1]}.js`);
     }
     for (const name of required) {

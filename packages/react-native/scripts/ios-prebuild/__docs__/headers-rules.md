@@ -361,9 +361,9 @@ the other third-party deps namespaces, with a single physical home in the
 ReactNativeDependenciesHeaders sidecar: relocating a second textual copy into
 ReactNativeHeaders collided with the real pod's own headers under
 `use_frameworks` (the duplicate-`@interface` / poisoned-module-graph Expo
-regression, 2026-07-03), so the set-equality gate asserts the declared
-namespace set — `DEPS_NAMESPACES` — matches the deps artifact's namespaces
-exactly, in both directions.
+regression, 2026-07-03), so the set-equality gate asserts the declared namespace
+set — `DEPS_NAMESPACES` — matches the deps artifact's namespaces exactly, in
+both directions.
 
 ### D. Remaining silent gaps — allowlist maintenance (by design)
 
