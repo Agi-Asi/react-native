@@ -24,7 +24,9 @@ jest.mock('child_process', () => {
         const plistActual = jest.requireActual('plist');
         const file = args[args.length - 1];
         return Buffer.from(
-          JSON.stringify(plistActual.parse(fsActual.readFileSync(file, 'utf8'))),
+          JSON.stringify(
+            plistActual.parse(fsActual.readFileSync(file, 'utf8')),
+          ),
         );
       }
       return actual.execFileSync(cmd, args, opts);

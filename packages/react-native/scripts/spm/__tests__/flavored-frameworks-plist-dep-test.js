@@ -26,13 +26,13 @@ jest.mock('plist', () => {
 // destructures execFileSync at require time (same pattern the old
 // swap-flavor-test used).
 jest.mock('child_process', () => {
-  const actual = jest.requireActual('child_process');
+  const actual = jest.requireActual<$FlowFixMe>('child_process');
   return {
     ...actual,
     execFileSync: (cmd, args, opts) => {
       if (cmd === 'plutil') {
         const fs = require('fs');
-        const plist = jest.requireActual('plist');
+        const plist = jest.requireActual<$FlowFixMe>('plist');
         const file = args[args.length - 1];
         return Buffer.from(
           JSON.stringify(plist.parse(fs.readFileSync(file, 'utf8'))),
@@ -46,7 +46,8 @@ jest.mock('child_process', () => {
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const realPlist = jest.requireActual('plist');
+
+const realPlist = jest.requireActual<$FlowFixMe>('plist');
 
 function makeXcframework(root /*: string */) /*: string */ {
   const xcframework = path.join(root, 'React.xcframework');
