@@ -10,6 +10,28 @@
 
 'use strict';
 
+// flavored-frameworks.js shells out to `plutil` to read xcframework
+// Info.plists as JSON — plutil is macOS-only, so stand in with a portable
+// plist-parse for Linux CI. Module-level mock because the module destructures
+// `execFileSync` at require time (same pattern as the old swap-flavor-test).
+jest.mock('child_process', () => {
+  const actual = jest.requireActual('child_process');
+  return {
+    ...actual,
+    execFileSync: (cmd, args, opts) => {
+      if (cmd === 'plutil') {
+        const fsActual = require('fs');
+        const plistActual = jest.requireActual('plist');
+        const file = args[args.length - 1];
+        return Buffer.from(
+          JSON.stringify(plistActual.parse(fsActual.readFileSync(file, 'utf8'))),
+        );
+      }
+      return actual.execFileSync(cmd, args, opts);
+    },
+  };
+});
+
 const {
   PLUGIN_FRAMEWORKS_MANIFEST,
   finalizeArtifactPublication,

@@ -14,8 +14,16 @@ const {execFileSync} = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-// $FlowFixMe[untyped-import] plist does not publish Flow declarations.
-const plist = require('plist');
+
+// Info.plist parsing goes through plutil (as the pre-B1 swap script did): the
+// `plist` npm module is NOT a react-native dependency, so it only resolves
+// inside this monorepo via hoisting — requiring it breaks `spm add` in a
+// fresh consumer app with "Cannot find module 'plist'".
+function plistJson(p /*: string */) /*: $FlowFixMe */ {
+  return JSON.parse(
+    execFileSync('plutil', ['-convert', 'json', '-o', '-', p]).toString(),
+  );
+}
 
 /*:: import type {
   FlavoredFrameworkManifestEntry,
@@ -162,7 +170,7 @@ function parseXcframework(
   if (!fs.existsSync(infoPath)) {
     throw new Error(`XCFramework Info.plist missing at ${infoPath}`);
   }
-  const info = plist.parse(fs.readFileSync(infoPath, 'utf8'));
+  const info = plistJson(infoPath);
   const libraries = info.AvailableLibraries;
   if (!Array.isArray(libraries) || libraries.length === 0) {
     throw new Error(
@@ -303,9 +311,7 @@ function frameworkHeaderHashes(
 function invariantHeadersHashes(
   xcframeworkPath /*: string */,
 ) /*: Array<string> */ {
-  const info = plist.parse(
-    fs.readFileSync(path.join(xcframeworkPath, 'Info.plist'), 'utf8'),
-  );
+  const info = plistJson(path.join(xcframeworkPath, 'Info.plist'));
   if (!Array.isArray(info.AvailableLibraries)) {
     throw new Error(`XCFramework has no libraries: ${xcframeworkPath}`);
   }
