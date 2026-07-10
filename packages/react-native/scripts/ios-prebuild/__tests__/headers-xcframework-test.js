@@ -68,7 +68,7 @@ describe('stubSlicesFromXcframework', () => {
   // tested without a real xcframework or macOS tooling.
   const mockPlist = (obj /*: unknown */) =>
     jest
-      .spyOn(childProcess, 'execSync')
+      .spyOn(childProcess, 'execFileSync')
       .mockReturnValue(Buffer.from(JSON.stringify(obj) ?? '', 'utf8'));
 
   afterEach(() => {
