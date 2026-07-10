@@ -7,6 +7,8 @@
 
 #import "RCTLocalizedString.h"
 
+#import <React/RCTLog.h>
+
 #if !defined(WITH_FBI18N) || !(WITH_FBI18N)
 
 // Anchors resource lookups to the bundle that contains this code: React.framework
@@ -29,7 +31,19 @@ static NSBundle *RCTI18nStringsBundle(void)
     return [NSBundle bundleWithURL:url];
   }
   NSString *mainPath = [[NSBundle mainBundle] pathForResource:@"RCTI18nStrings" ofType:@"bundle"];
-  return mainPath != nil ? [NSBundle bundleWithPath:mainPath] : nil;
+  if (mainPath != nil) {
+    return [NSBundle bundleWithPath:mainPath];
+  }
+#if RCT_DEV
+  // Missing resources are otherwise silent (every lookup falls back to the
+  // untranslated default and the privacy manifest quietly drops out of the
+  // app's aggregated privacy report). Called once — the caller caches.
+  RCTLogWarn(
+      @"RCTI18nStrings.bundle not found in React.framework or the app bundle. Localized strings will use their "
+      @"untranslated defaults, and React's PrivacyInfo.xcprivacy may be missing from the app's privacy report. "
+      @"When consuming the prebuilt React.framework, verify it is embedded into the app with its resources intact.");
+#endif
+  return nil;
 }
 
 extern "C" {
