@@ -54,13 +54,23 @@ const CP_FLAGS = process.platform === 'darwin' ? '-Rc' : '-R';
 // forces a recompose even when the cached source xcframework is untouched —
 // the Info.plist mtime alone can't catch that. Stable across fresh checkouts
 // (content-based, not mtime-based). sha256 to avoid weak-hash lint.
+//
+// This list must contain every local sibling module headers-compose.js
+// requires (i.e. every `require('./*.js')` above) — the guard test in
+// __tests__/headers-compose-test.js enforces that by parsing this file's
+// source and diffing it against this list, so an added require without a
+// matching entry here fails the test instead of silently going stale.
+const COMPOSE_TOOLING_FILES /*: Array<string> */ = [
+  'framework-resources.js',
+  'headers-inventory.js',
+  'headers-spec.js',
+  'headers-xcframework.js',
+  'headers-compose.js',
+];
+
 function composeToolingHash() /*: string */ {
   const hash = crypto.createHash('sha256');
-  for (const name of [
-    'headers-inventory.js',
-    'headers-spec.js',
-    'headers-compose.js',
-  ]) {
+  for (const name of COMPOSE_TOOLING_FILES) {
     hash.update(fs.readFileSync(path.join(__dirname, name)));
   }
   return hash.digest('hex');
@@ -385,4 +395,6 @@ module.exports = {
   buildReactNativeHeadersXcframework,
   ensureHeadersLayout,
   DEPS_NAMESPACES,
+  COMPOSE_TOOLING_FILES,
+  composeToolingHash,
 };
