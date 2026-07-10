@@ -176,9 +176,11 @@ module RNDepsFacades
             raise "[RNDepsFacades] Real podspec for facaded pod '#{name}' not found at #{path}. " \
                   "Update FACADE_PODS in rndeps_facades.rb if the podspec moved."
         end
-        Pod::Specification.from_file(path)
-    rescue => e
-        raise "[RNDepsFacades] Failed to read real podspec for facaded pod '#{name}' at #{path}: #{e.message}"
+        begin
+            Pod::Specification.from_file(path)
+        rescue => e
+            raise "[RNDepsFacades] Failed to read real podspec for facaded pod '#{name}' at #{path}: #{e.message}"
+        end
     end
     private_class_method :load_real_spec
 

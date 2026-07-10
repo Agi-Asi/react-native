@@ -62,7 +62,9 @@ def add_rn_third_party_dependencies(s)
         # Artifact headers are flattened into the pod-local Headers/ by the podspec
         # prepare_command (see __docs__/prebuilt-deps.md).
         header_search_paths << "$(PODS_ROOT)/ReactNativeDependencies/Headers"
-        current_pod_target_xcconfig["HEADER_SEARCH_PATHS"] = header_search_paths
+
+        # uniq so a second call on the same spec can't duplicate entries.
+        current_pod_target_xcconfig["HEADER_SEARCH_PATHS"] = header_search_paths.uniq
     end
 
     s.pod_target_xcconfig = current_pod_target_xcconfig
