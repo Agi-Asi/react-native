@@ -26,7 +26,7 @@ const {
   renderReactModuleMap,
   renderUmbrellaHeader,
 } = require('./headers-spec');
-const {execFileSync, execSync} = require('child_process');
+const {execFileSync} = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -287,25 +287,37 @@ function buildReactNativeHeadersXcframework(
     ? [...DEFAULT_STUB_SLICES, CATALYST_STUB_SLICE]
     : DEFAULT_STUB_SLICES;
   const libs = slices.map(slice => {
-    const sdkPath = execSync(`xcrun --sdk ${slice.sdk} --show-sdk-path`)
+    const sdkPath = execFileSync('xcrun', [
+      '--sdk',
+      slice.sdk,
+      '--show-sdk-path',
+    ])
       .toString()
       .trim();
     const thins = slice.targets.map((t, i) => {
       const obj = path.join(work, `stub-${slice.name}-${i}.o`);
-      execSync(
-        `xcrun clang -c -target ${t} -isysroot "${sdkPath}" "${path.join(work, 'stub.c')}" -o "${obj}"`,
-      );
+      execFileSync('xcrun', [
+        'clang',
+        '-c',
+        '-target',
+        t,
+        '-isysroot',
+        sdkPath,
+        path.join(work, 'stub.c'),
+        '-o',
+        obj,
+      ]);
       const lib = path.join(work, `stub-${slice.name}-${i}.a`);
-      execSync(`xcrun libtool -static -o "${lib}" "${obj}" 2>/dev/null`);
+      execFileSync('xcrun', ['libtool', '-static', '-o', lib, obj], {
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
       return lib;
     });
     const outLib = path.join(work, `libReactNativeHeaders-${slice.name}.a`);
     if (thins.length === 1) {
       fs.copyFileSync(thins[0], outLib);
     } else {
-      execSync(
-        `xcrun lipo -create ${thins.map(l => `"${l}"`).join(' ')} -output "${outLib}"`,
-      );
+      execFileSync('xcrun', ['lipo', '-create', ...thins, '-output', outLib]);
     }
     return outLib;
   });
@@ -313,12 +325,12 @@ function buildReactNativeHeadersXcframework(
   // ---- compose ----
   const outXcfw = path.join(outDir, 'ReactNativeHeaders.xcframework');
   fs.rmSync(outXcfw, {recursive: true, force: true});
-  execSync(
-    `xcodebuild -create-xcframework ` +
-      libs.map(l => `-library "${l}" -headers "${stage}"`).join(' ') +
-      ` -output "${outXcfw}"`,
-    {stdio: 'pipe'},
-  );
+  const xcframeworkArgs = ['-create-xcframework'];
+  for (const l of libs) {
+    xcframeworkArgs.push('-library', l, '-headers', stage);
+  }
+  xcframeworkArgs.push('-output', outXcfw);
+  execFileSync('xcodebuild', xcframeworkArgs, {stdio: 'pipe'});
   fs.rmSync(stage, {recursive: true, force: true});
   fs.rmSync(work, {recursive: true, force: true});
   console.log(
