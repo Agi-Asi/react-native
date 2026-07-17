@@ -37,6 +37,14 @@ class SPMManager
           unless target.build_settings(config.name)['SWIFT_INCLUDE_PATHS'].include?(search_path)
             target.build_settings(config.name)['SWIFT_INCLUDE_PATHS'].push(search_path)
           end
+          # The search path above makes the platform-wide products dir visible
+          # to this target, so an SPM binary target's module.modulemap is seen
+          # twice: once there and once in the target's own build dir (Xcode
+          # processes the xcframework into both). Implicit modules tolerate the
+          # duplicate, but the explicit-modules dependency scanner (the default
+          # starting with Xcode 26) fails with "redefinition of module". Opt
+          # SPM-consuming pod targets out of explicit modules.
+          target.build_settings(config.name)['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
         end
       end
     end
