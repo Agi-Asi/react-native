@@ -1,5 +1,117 @@
 # Changelog
 
+## v0.87.0-rc.2
+
+### Breaking
+
+- Remove the `SceneTracker` module from `Libraries/Utilities`, stop setting the active scene from `AppRegistry.runApplication`, and pass the app key as an optional second argument to `WrapperComponentProvider` ([bbb5be9b41](https://github.com/react/react-native/commit/bbb5be9b416efc9b1c365b08a0bcf932c14562ca) by [@rubennorte](https://github.com/rubennorte))
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Added
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Changed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Prebuilt-deps mode: serve third-party headers from the ReactNativeDependencies pod itself and resolve community `s.dependency` on RCT-Folly/glog/boost/etc. via dependency-only facade pods ([a8156acf8b](https://github.com/react/react-native/commit/a8156acf8bbc9ee15901cf0d8935d73454768aa7) by [@chrfalch](https://github.com/chrfalch))
+- Remove the Clang VFS overlay from prebuilt React Native Core; resolve headers via React.xcframework + a new headers-only ReactNativeHeaders.xcframework ([376bd0e464](https://github.com/react/react-native/commit/376bd0e464b7785b4bcf8673a96746ec8107f1eb) by [@chrfalch](https://github.com/chrfalch))
+
+### Deprecated
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Removed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Fixed
+
+- Fix app failing to initialize (`HMRClient.setup()` redbox) because the environment setup module was dropped from the bundle ([eb987ef550](https://github.com/react/react-native/commit/eb987ef5504d85ff862b5a679056157888c56960) by [@cipolleschi](https://github.com/cipolleschi))
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Fix "redefinition of 'HighResDuration'" / "could not build module 'React'" when building Swift pods with C++ interop against the prebuilt React-Core artifact ([9847238e3f](https://github.com/react/react-native/commit/9847238e3fc2badce8eeea659c4990aba1366d9b) by [@chrfalch](https://github.com/chrfalch))
+- Fix debug Hermes being silently embedded in Release builds after the hermes-engine pod is re-installed ([62a2b386c9](https://github.com/react/react-native/commit/62a2b386c91985a46ee048dfa6e2216ba42a7e89) by [@tjzel](https://github.com/tjzel))
+- Fix "The project 'Pods' is damaged and cannot be opened" when a library uses `spm_dependency` and the generated UUID collides with an existing Pods project object ([1cdf784a06](https://github.com/react/react-native/commit/1cdf784a068e2ed16842b74c0b87b7ff7532fe03) by [@chrfalch](https://github.com/chrfalch))
+- Ship React-Core's privacy manifest and localized strings (RCTI18nStrings) inside the prebuilt React.xcframework, so CocoaPods-prebuilt and SwiftPM apps include them ([77b75122ef](https://github.com/react/react-native/commit/77b75122ef9ed172012d7c6acb335f966d4ede79) by [@chrfalch](https://github.com/chrfalch))
+
+### Security
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Unknown
+
+- Release 0.87.0-rc.2 ([9518500909](https://github.com/react/react-native/commit/95185009096b11a132e4c7a5dc80e5a00fdb7691) by [@react-native-bot](https://github.com/react-native-bot))
+- Bump hermes version ([d045236281](https://github.com/react/react-native/commit/d045236281602acd6a4038ea07f230aa69b41a5d) by [@zeyap](https://github.com/zeyap))
+- Fix CI: build rntester dynamic-frameworks lane from source ([88f43bc69a](https://github.com/react/react-native/commit/88f43bc69a046314a9096066e1a224066c59da30) by [@cipolleschi](https://github.com/cipolleschi))
+- Fix CI for RC.2 ([896fcb3591](https://github.com/react/react-native/commit/896fcb359112a8ebd35c082b314d57c5c3c0f34c) by [@cipolleschi](https://github.com/cipolleschi))
+- [0.87] Pick SwiftPM support chain (#57442, #57332, #57564) ([486df8d410](https://github.com/react/react-native/commit/486df8d410d73d7a1be3600c93a6cf7888532843) by [@cipolleschi](https://github.com/cipolleschi))
+- Release 0.87.0-rc.1 ([4b62c4ac31](https://github.com/react/react-native/commit/4b62c4ac3130c532e9be9143a075c8417333f4a4) by [@react-native-bot](https://github.com/react-native-bot))
+
+#### Android Unknown
+
+- Set .hermesv1version to hermes-v250829098.0.16 ([17bf68a4c3](https://github.com/react/react-native/commit/17bf68a4c3a7250b9b65657ae58c74f61c8d952d) by [@zeyap](https://github.com/zeyap))
+
+#### iOS Unknown
+
+
+
+#### Failed to parse
+
+- Fix "redefinition of module" build failure on Xcode 26.3 for pods using spm_dependency with prebuilt React Native core ([4a6620703c](https://github.com/react/react-native/commit/4a6620703c30b3f53917812720528684838d3bbf) by [@chrfalch](https://github.com/chrfalch))
+
+
 ## v0.87.0-rc.1
 
 ### Breaking
