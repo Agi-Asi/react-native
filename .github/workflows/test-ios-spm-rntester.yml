@@ -1,0 +1,111 @@
+name: Test iOS SwiftPM - RN Tester
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: 'Which build configuration(s) to test'
+        type: choice
+        options:
+          - both
+          - Debug
+          - Release
+        default: both
+  schedule:
+    # Nightly at 06:00 UTC (low-traffic hour).
+    - cron: '0 6 * * *'
+
+jobs:
+  prebuild_apple_dependencies:
+    uses: ./.github/workflows/prebuild-ios-dependencies.yml
+    secrets: inherit
+
+  prebuild_react_native_core:
+    needs: [prebuild_apple_dependencies]
+    if: ${{ needs.prebuild_apple_dependencies.result == 'success' }}
+    uses: ./.github/workflows/prebuild-ios-core.yml
+    with:
+      use-hermes-prebuilt: ${{ !endsWith(github.ref_name, '-stable') }}
+    secrets: inherit
+
+  set_flavors:
+    runs-on: ubuntu-latest
+    outputs:
+      flavors: ${{ steps.compute.outputs.flavors }}
+    steps:
+      - id: compute
+        env:
+          FLAVOR: ${{ github.event.inputs.flavor }}
+        run: |
+          case "$FLAVOR" in
+            Debug) echo 'flavors=["Debug"]' >> "$GITHUB_OUTPUT" ;;
+            Release) echo 'flavors=["Release"]' >> "$GITHUB_OUTPUT" ;;
+            *) echo 'flavors=["Debug","Release"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  test:
+    needs: [prebuild_react_native_core, set_flavors]
+    if: ${{ needs.prebuild_react_native_core.result == 'success' }}
+    runs-on: macos-15-large
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: ${{ fromJSON(needs.set_flavors.outputs.flavors) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup xcode
+        uses: ./.github/actions/setup-xcode
+      - name: Setup node.js
+        uses: ./.github/actions/setup-node
+      - name: Run yarn install
+        uses: ./.github/actions/yarn-install
+      - name: Set Hermes prebuilt version
+        shell: bash
+        run: node ./scripts/releases/use-hermes-prebuilt.js
+      - name: Run yarn install again, with the correct hermes version
+        uses: ./.github/actions/yarn-install
+      - name: Ensure CocoaPods (needed by `spm add --deintegrate`)
+        shell: bash
+        run: pod --version || sudo gem install cocoapods --no-document
+      # `spm add --artifacts` validates BOTH the debug/ and release/ slots, so
+      # download both flavors regardless of which one this cell builds.
+      - name: Download ReactCore (Debug)
+        uses: actions/download-artifact@v7
+        with:
+          name: ReactCoreDebug.xcframework.tar.gz
+          path: /tmp/rc-debug
+      - name: Download ReactCore (Release)
+        uses: actions/download-artifact@v7
+        with:
+          name: ReactCoreRelease.xcframework.tar.gz
+          path: /tmp/rc-release
+      - name: Download ReactNativeDependencies (Debug)
+        uses: actions/download-artifact@v7
+        with:
+          name: ReactNativeDependenciesDebug.xcframework.tar.gz
+          path: /tmp/deps-debug
+      - name: Download ReactNativeDependencies (Release)
+        uses: actions/download-artifact@v7
+        with:
+          name: ReactNativeDependenciesRelease.xcframework.tar.gz
+          path: /tmp/deps-release
+      - name: Prime SPM artifacts (Debug + Release)
+        shell: bash
+        run: |
+          node scripts/e2e/spm-prime-artifacts.js --artifacts /tmp/spm-artifacts --flavor Debug \
+            --core-tarball /tmp/rc-debug/ReactCoreDebug.xcframework.tar.gz \
+            --deps-tarball /tmp/deps-debug/ReactNativeDependenciesDebug.xcframework.tar.gz
+          node scripts/e2e/spm-prime-artifacts.js --artifacts /tmp/spm-artifacts --flavor Release \
+            --core-tarball /tmp/rc-release/ReactCoreRelease.xcframework.tar.gz \
+            --deps-tarball /tmp/deps-release/ReactNativeDependenciesRelease.xcframework.tar.gz
+      - name: Convert to SwiftPM + build
+        shell: bash
+        run: |
+          node scripts/e2e/spm-ios-e2e.js \
+            --app rntester \
+            --flavor "${{ matrix.flavor }}" \
+            --artifacts /tmp/spm-artifacts
