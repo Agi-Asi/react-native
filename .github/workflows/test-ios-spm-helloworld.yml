@@ -21,6 +21,9 @@ on:
 jobs:
   prebuild_apple_dependencies:
     uses: ./.github/workflows/prebuild-ios-dependencies.yml
+    with:
+      # e2e only compiles for the iOS simulator — no need for device/catalyst/tv/xr slices.
+      slices: '["ios-simulator"]'
     secrets: inherit
 
   prebuild_react_native_core:
@@ -29,6 +32,7 @@ jobs:
     uses: ./.github/workflows/prebuild-ios-core.yml
     with:
       use-hermes-prebuilt: ${{ !endsWith(github.ref_name, '-stable') }}
+      slices: '["ios-simulator"]'
     secrets: inherit
 
   set_flavors:
