@@ -109,6 +109,19 @@ function step(msg /*: string */) {
   console.log(`\n\x1b[35m==> ${msg}\x1b[0m`);
 }
 
+// process.env is typed to allow numbers, but execFileSync's `env` option wants
+// string values only — copy across just the string entries.
+function stringEnv() /*: {[string]: string} */ {
+  const out /*: {[string]: string} */ = {};
+  for (const key of Object.keys(process.env)) {
+    const value = process.env[key];
+    if (typeof value === 'string') {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 function run(
   cmd /*: string */,
   args /*: Array<string> */,
@@ -116,11 +129,16 @@ function run(
   env /*:: ?: {[string]: string} */,
 ) /*: void */ {
   console.log(`$ (cd ${cwd} && ${cmd} ${args.join(' ')})`);
-  execFileSync(cmd, args, {
-    cwd,
-    stdio: 'inherit',
-    env: env != null ? {...process.env, ...env} : process.env,
-  });
+  // With no override, omit `env` so execFileSync inherits process.env as-is.
+  if (env != null) {
+    execFileSync(cmd, args, {
+      cwd,
+      stdio: 'inherit',
+      env: {...stringEnv(), ...env},
+    });
+  } else {
+    execFileSync(cmd, args, {cwd, stdio: 'inherit'});
+  }
 }
 
 function resolveInRepoApp(app /*: 'rntester' | 'helloworld' */) /*: AppMeta */ {
@@ -375,7 +393,11 @@ function assertEmbeddedFlavor(
 }
 
 async function main() /*: Promise<void> */ {
-  const {values} = parseArgs(config);
+  const {
+    values,
+    /* $FlowFixMe[incompatible-type] Natural Inference rollout. See
+     * https://fburl.com/workplace/6291gfvu */
+  } = parseArgs(config);
 
   if (values.help) {
     console.log(HELP);

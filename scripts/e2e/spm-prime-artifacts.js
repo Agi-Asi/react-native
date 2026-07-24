@@ -100,7 +100,11 @@ const config = {
 };
 
 async function main() /*: Promise<void> */ {
-  const {values} = parseArgs(config);
+  const {
+    values,
+    /* $FlowFixMe[incompatible-type] Natural Inference rollout. See
+     * https://fburl.com/workplace/6291gfvu */
+  } = parseArgs(config);
 
   if (values.help) {
     console.log(HELP);
