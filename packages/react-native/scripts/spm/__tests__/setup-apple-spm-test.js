@@ -14,6 +14,7 @@ const {
   detectStandardRnLayoutRedirect,
   ensureBothArtifactFlavors,
   findInjectedXcodeproj,
+  parseArgs,
   resolveAction,
   shouldAutoDeintegrate,
 } = require('../../setup-apple-spm');
@@ -58,6 +59,29 @@ function gitInitAndCommit(dir) {
   execFileSync('git', ['add', '-A'], opts);
   execFileSync('git', ['commit', '-m', 'init'], opts);
 }
+
+describe('parseArgs', () => {
+  it('parses --config-command as a JSON argv array', () => {
+    const args = parseArgs([
+      'update',
+      '--config-command',
+      '["a","b","config"]',
+    ]);
+
+    expect(args.action).toBe('update');
+    expect(args.configCommand).toEqual(['a', 'b', 'config']);
+  });
+
+  it('sets configCommand to null when --config-command is omitted', () => {
+    expect(parseArgs(['update']).configCommand).toBeNull();
+  });
+
+  it('throws for an invalid --config-command value', () => {
+    expect(() => parseArgs(['update', '--config-command', 'not json'])).toThrow(
+      /--config-command/,
+    );
+  });
+});
 
 // ---------------------------------------------------------------------------
 // resolveAction — zero-arg default. Explicit action wins; otherwise `update`

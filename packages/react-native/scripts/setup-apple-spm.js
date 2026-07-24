@@ -55,6 +55,7 @@
  *                               must contain debug/ and release/ cache slots.
  *   [advanced] --download <auto|skip|force> Artifact policy (default: auto).
  *   [advanced] --skip-codegen   Skip the react-native codegen step.
+ *   [advanced] --config-command <json> Override the autolinking config command.
  *
  * Steps performed (add/update):
  *   1. react-native codegen → build/generated/ios/ + install SPM codegen template
@@ -83,6 +84,7 @@ const {
 } = require('./spm/generate-spm-autolinking');
 const {
   generateAutolinkingConfig,
+  parseConfigCommandJson,
 } = require('./spm/generate-spm-autolinking-config');
 const {main: generatePackage} = require('./spm/generate-spm-package');
 const {findSourcePath} = require('./spm/generate-spm-package');
@@ -187,6 +189,11 @@ function parseArgs(argv /*: Array<string> */) /*: SetupArgs */ {
       default: false,
       describe: '[advanced] Skip the react-native codegen step',
     })
+    .option('config-command', {
+      type: 'string',
+      describe:
+        '[advanced] JSON array of the argv used to generate autolinking.json, overriding the default @react-native-community/cli config command. Also settable via RCT_SPM_AUTOLINKING_CONFIG_COMMAND. Example: \'["npx","expo-modules-autolinking","react-native-config","--json","--platform","ios"]\'',
+    })
     .usage(
       'Usage: $0 [action] [options]\n\nSets up Swift Package Manager support in a React Native app.',
     )
@@ -214,6 +221,10 @@ function parseArgs(argv /*: Array<string> */) /*: SetupArgs */ {
     version: parsed.version ?? null,
     artifacts: parsed.artifacts ?? null,
     skipCodegen: parsed['skip-codegen'],
+    configCommand:
+      parsed['config-command'] != null
+        ? parseConfigCommandJson(parsed['config-command'], '--config-command')
+        : null,
     downloadPolicy: parsed.download,
     productName: parsed['product-name'] ?? null,
     xcodeprojPath: parsed.xcodeproj ?? null,
@@ -982,7 +993,10 @@ async function main(argv /*:: ?: Array<string> */) /*: Promise<void> */ {
   if (needsCliConfig) {
     log('Generating autolinking.json (CLI config)...');
     try {
-      autolinkingConfigResult = generateAutolinkingConfig({projectRoot});
+      autolinkingConfigResult = generateAutolinkingConfig({
+        projectRoot,
+        configCommand: args.configCommand ?? undefined,
+      });
       log(
         `Wrote ${path.relative(appRoot, autolinkingConfigResult.outputPath)}`,
       );
@@ -1159,6 +1173,7 @@ module.exports = {
   main,
   detectStandardRnLayoutRedirect,
   findInjectedXcodeproj,
+  parseArgs,
   resolveAction,
   shouldAutoDeintegrate,
   ensureBothArtifactFlavors,
