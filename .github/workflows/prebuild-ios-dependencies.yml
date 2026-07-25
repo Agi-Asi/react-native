@@ -2,12 +2,6 @@ name: Prebuild iOS Dependencies
 
 on:
   workflow_call: # this directive allow us to call this workflow from other workflows
-    inputs:
-      slices:
-        description: 'JSON array of Apple platform slices to build. Defaults to the full set; callers that only consume a subset (e.g. a simulator-only e2e build) can pass fewer to save time.'
-        type: string
-        required: false
-        default: '["ios", "ios-simulator", "macos", "mac-catalyst", "tvos", "tvos-simulator", "xros", "xros-simulator"]'
 
 jobs:
   prepare_workspace:
@@ -57,7 +51,17 @@ jobs:
       fail-fast: false
       matrix:
         flavor: ['Debug', 'Release']
-        slice: ${{ fromJSON(inputs.slices) }}
+        slice:
+          [
+            'ios',
+            'ios-simulator',
+            'macos',
+            'mac-catalyst',
+            'tvos',
+            'tvos-simulator',
+            'xros',
+            'xros-simulator',
+          ]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
