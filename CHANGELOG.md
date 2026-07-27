@@ -17,6 +17,110 @@
 
 - Fix Swift C++-interop build failure (implicit copy constructor of TraceRecordingState/HostTracingProfile) for libraries using cxx interop with prebuilt React Native core ([38611186f5](https://github.com/react/react-native/commit/38611186f5867bd578a269872986a5753c8b41fe) by [@chrfalch](https://github.com/chrfalch))
 
+## v0.86.2
+
+### Breaking
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Added
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Changed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Deprecated
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Removed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Fixed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Security
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Unknown
+
+- Release 0.86.2 ([ee90a75420](https://github.com/react/react-native/commit/ee90a754201cfdfefcc5e458a10906c9952cf26c) by [@react-native-bot](https://github.com/react-native-bot))
+- Fix popup menu metadata for trusted publishing ([62d6a6cba9](https://github.com/react/react-native/commit/62d6a6cba99fecdfad43fa646a40bd8ed9304dc2) by [@cipolleschi](https://github.com/cipolleschi))
+- Release 0.86.2 ([501fac4cf8](https://github.com/react/react-native/commit/501fac4cf8f13e6fa729b32bf3d5feccbfc9b587) by [@react-native-bot](https://github.com/react-native-bot))
+- Release 0.86.1 ([db582cded3](https://github.com/react/react-native/commit/db582cded32d42eb44f4829e44a43e6cd14b0383) by [@react-native-bot](https://github.com/react-native-bot))
+
+#### Android Unknown
+
+
+
+#### iOS Unknown
+
+
+
+#### Failed to parse
+
+
 
 ## v0.87.0-rc.2
 
