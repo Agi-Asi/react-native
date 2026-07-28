@@ -99,20 +99,6 @@ jobs:
             exit 1
           fi
           echo "SwiftPM injected in place; Podfile de-integrated."
-      # Under SwiftPM there is no hermes-engine pod to set HERMES_CLI_PATH, so
-      # resolve hermesc from the app's node_modules for react-native-xcode.sh.
-      - name: Resolve HERMES_CLI_PATH
-        if: ${{ matrix.flavor == 'Release' }}
-        shell: bash
-        working-directory: ${{ env.APP_IOS_DIR }}
-        run: |
-          HERMESC=$(node -e "const p=require('path');console.log(p.join(p.dirname(require.resolve('hermes-compiler/package.json')),'hermesc/osx-bin/hermesc'))" 2>/dev/null || true)
-          if [[ -z "$HERMESC" || ! -x "$HERMESC" ]]; then
-            echo "::error::Could not resolve hermes-compiler's hermesc from $PWD. Release builds need it to compile JS to Hermes bytecode; failing here so it is not mistaken for an xcodebuild bundling error."
-            exit 1
-          fi
-          echo "HERMES_CLI_PATH=$HERMESC" >> "$GITHUB_ENV"
-          echo "Using hermesc at $HERMESC"
       - name: Build ${{ env.XCODE_SCHEME }} (${{ matrix.flavor }})
         shell: bash
         working-directory: ${{ env.APP_IOS_DIR }}
