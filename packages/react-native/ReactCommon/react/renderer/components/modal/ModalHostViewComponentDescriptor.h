@@ -37,7 +37,7 @@ class ModalHostViewComponentDescriptor final : public ConcreteComponentDescripto
 #endif // ANDROID
 
  private:
-  constexpr static auto UIManagerJavaDescriptor = "com/react/react/fabric/FabricUIManager";
+  constexpr static auto UIManagerJavaDescriptor = "com/facebook/react/fabric/FabricUIManager";
 };
 
 } // namespace facebook::react

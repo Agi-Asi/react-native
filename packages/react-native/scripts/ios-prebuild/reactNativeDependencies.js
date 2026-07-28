@@ -186,7 +186,7 @@ function getTarballUrl(
   // The mirror's structure must be the same of the Maven repo the react-native core team publishes on Maven Central.
   const mavenRepoUrl =
     process.env.ENTERPRISE_REPOSITORY ?? 'https://repo1.maven.org/maven2';
-  const namespace = 'com/react/react';
+  const namespace = 'com/facebook/react';
   return `${mavenRepoUrl}/${namespace}/react-native-artifacts/${version}/react-native-artifacts-${version}-reactnative-dependencies-${buildType.toLowerCase()}.tar.gz`;
 }
 

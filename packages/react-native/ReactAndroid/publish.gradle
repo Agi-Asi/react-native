@@ -57,7 +57,7 @@ publishing {
                 scm {
                     url = "https://github.com/react/react-native.git"
                     connection = "scm:git:https://github.com/react/react-native.git"
-                    developerConnection = "scm:git:git@github.com:react/react-native.git"
+                    developerConnection = "scm:git:git@github.com:facebook/react-native.git"
                 }
             }
         }

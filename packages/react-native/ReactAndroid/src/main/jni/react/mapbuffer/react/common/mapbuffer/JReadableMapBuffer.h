@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class JReadableMapBuffer : public jni::HybridClass<JReadableMapBuffer> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/common/mapbuffer/ReadableMapBuffer;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/common/mapbuffer/ReadableMapBuffer;";
 
   static jni::local_ref<JReadableMapBuffer::jhybridobject> createWithContents(MapBuffer &&map);
 

@@ -36,7 +36,7 @@ namespace facebook::react {
 
 static jni::alias_ref<jni::JClass> getReactNativeFeatureFlagsProviderJavaClass() {
   static const auto jClass = facebook::jni::findClassStatic(
-      "com/react/react/internal/featureflags/ReactNativeFeatureFlagsProvider");
+      "com/facebook/react/internal/featureflags/ReactNativeFeatureFlagsProvider");
   return jClass;
 }
 

@@ -17,7 +17,7 @@
 namespace facebook::react {
 
 struct ReadableType : public jni::JavaClass<ReadableType> {
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/bridge/ReadableType;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/bridge/ReadableType;";
 
   static jni::local_ref<ReadableType> getType(folly::dynamic::Type type);
 };
@@ -30,7 +30,7 @@ template <typename T>
 void throwIfObjectAlreadyConsumed(const T &t, const char *msg)
 {
   if (t->isConsumed) {
-    jni::throwNewJavaException("com/react/react/bridge/ObjectAlreadyConsumedException", msg);
+    jni::throwNewJavaException("com/facebook/react/bridge/ObjectAlreadyConsumedException", msg);
   }
 }
 

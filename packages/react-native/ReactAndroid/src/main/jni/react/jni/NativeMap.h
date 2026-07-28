@@ -16,7 +16,7 @@ namespace facebook::react {
 
 class NativeMap : public jni::HybridClass<NativeMap> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/bridge/NativeMap;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/bridge/NativeMap;";
 
   jni::local_ref<jstring> toString();
 

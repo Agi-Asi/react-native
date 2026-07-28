@@ -144,7 +144,7 @@ class AndroidTextInputComponentDescriptor final : public ConcreteComponentDescri
   };
 
   // TODO T68526882: Unify with Binding::UIManagerJavaDescriptor
-  constexpr static auto UIManagerJavaDescriptor = "com/react/react/fabric/FabricUIManager";
+  constexpr static auto UIManagerJavaDescriptor = "com/facebook/react/fabric/FabricUIManager";
 
   const std::shared_ptr<TextLayoutManager> textLayoutManager_;
   mutable std::unordered_map<int, ThemePadding> surfaceIdToThemePaddingMap_;

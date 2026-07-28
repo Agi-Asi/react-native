@@ -18,12 +18,12 @@
 namespace facebook::react {
 
 struct JDynamic : public jni::JavaClass<JDynamic> {
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/bridge/Dynamic;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/bridge/Dynamic;";
 };
 
 class JDynamicNative : public jni::HybridClass<JDynamicNative, JDynamic> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/bridge/DynamicNative;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/bridge/DynamicNative;";
 
   JDynamicNative(folly::dynamic payload) : payload_(std::move(payload)) {}
 

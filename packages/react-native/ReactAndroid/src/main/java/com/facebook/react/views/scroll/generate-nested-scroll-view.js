@@ -188,7 +188,7 @@ function generateFile(sourcePath, outputPath, transformFn, verify) {
 
     if (existing !== signed) {
       const sourceDir =
-        '~/fbsource/xplat/js/react-native-github/packages/react-native/ReactAndroid/src/main/java/com/react/react/views/scroll';
+        '~/fbsource/xplat/js/react-native-github/packages/react-native/ReactAndroid/src/main/java/com/facebook/react/views/scroll';
       console.error(
         `FAIL: ${path.basename(outputPath)} is out of date. ` +
           `Run 'cd ${sourceDir} && node generate-nested-scroll-view.js' to update.`,

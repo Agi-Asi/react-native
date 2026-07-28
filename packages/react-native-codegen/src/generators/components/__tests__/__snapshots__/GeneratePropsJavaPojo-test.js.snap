@@ -2,7 +2,7 @@
 
 exports[`GeneratePropsJavaPojo can generate fixture ALL_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -25,7 +25,7 @@ public class AllPropPropsObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -89,7 +89,7 @@ public class AllPropPropsObjectPrimitiveRequiredProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -112,7 +112,7 @@ public class AllPropPropsNestedPropANestedPropB {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -134,7 +134,7 @@ public class AllPropPropsNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -157,7 +157,7 @@ public class AllPropPropsNestedArrayAsPropertyArrayPropElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropPropsNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -180,7 +180,7 @@ public class AllPropPropsNestedArrayAsProperty {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -288,7 +288,7 @@ public class AllPropProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ALL_PROP_WITH_OPTIONAL_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -311,7 +311,7 @@ public class AllPropWithOptionalGenPropsObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -375,7 +375,7 @@ public class AllPropWithOptionalGenPropsObjectPrimitiveRequiredProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -398,7 +398,7 @@ public class AllPropWithOptionalGenPropsNestedPropANestedPropB {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -420,7 +420,7 @@ public class AllPropWithOptionalGenPropsNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -443,7 +443,7 @@ public class AllPropWithOptionalGenPropsNestedArrayAsPropertyArrayPropElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenPropsNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -466,7 +466,7 @@ public class AllPropWithOptionalGenPropsNestedArrayAsProperty {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalGenProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -574,7 +574,7 @@ public class AllPropWithOptionalGenProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ALL_PROP_WITH_OPTIONAL_OBJECT_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -597,7 +597,7 @@ public class AllPropWithOptionalObjectGenPropsObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -661,7 +661,7 @@ public class AllPropWithOptionalObjectGenPropsObjectPrimitiveRequiredProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -684,7 +684,7 @@ public class AllPropWithOptionalObjectGenPropsNestedPropANestedPropB {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -706,7 +706,7 @@ public class AllPropWithOptionalObjectGenPropsNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -729,7 +729,7 @@ public class AllPropWithOptionalObjectGenPropsNestedArrayAsPropertyArrayPropElem
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenPropsNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -752,7 +752,7 @@ public class AllPropWithOptionalObjectGenPropsNestedArrayAsProperty {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/AllPropsNativeComponent/AllPropWithOptionalObjectGenProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -860,7 +860,7 @@ public class AllPropWithOptionalObjectGenProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -883,7 +883,7 @@ public class ArrayPropsNativeComponentPropsObjectElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayElementObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayElementObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -906,7 +906,7 @@ public class ArrayPropsNativeComponentPropsArrayElementObjectElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -929,7 +929,7 @@ public class ArrayPropsNativeComponentPropsArrayElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -952,7 +952,7 @@ public class ArrayPropsNativeComponentPropsArrayOfArrayOfObjectElementElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1043,7 +1043,7 @@ public class ArrayPropsNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS_WITH_NESTED_OBJECT 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsNativePrimitivesElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentPropsNativePrimitivesElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1077,7 +1077,7 @@ public class ArrayPropsNativeComponentPropsNativePrimitivesElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1105,7 +1105,7 @@ public class ArrayPropsNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS_WITH_NESTED_OBJECT_WITH_OPTIONAL_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsOptionalGenNativeComponentPropsNativePrimitivesElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsOptionalGenNativeComponentPropsNativePrimitivesElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1139,7 +1139,7 @@ public class ArrayPropsOptionalGenNativeComponentPropsNativePrimitivesElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsOptionalGenNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsOptionalGenNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1167,7 +1167,7 @@ public class ArrayPropsOptionalGenNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS_WITH_NESTED_OBJECT_WITH_OPTIONAL_OBJECT_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsOptionalObjectGenNativeComponentPropsNativePrimitivesElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsOptionalObjectGenNativeComponentPropsNativePrimitivesElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1201,7 +1201,7 @@ public class ArrayPropsOptionalObjectGenNativeComponentPropsNativePrimitivesElem
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsOptionalObjectGenNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsOptionalObjectGenNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1229,7 +1229,7 @@ public class ArrayPropsOptionalObjectGenNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS_WITH_OPTIONAL_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1252,7 +1252,7 @@ public class ArrayPropsWithOptionalGenNativeComponentPropsObjectElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayElementObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayElementObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1275,7 +1275,7 @@ public class ArrayPropsWithOptionalGenNativeComponentPropsArrayElementObjectElem
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1298,7 +1298,7 @@ public class ArrayPropsWithOptionalGenNativeComponentPropsArrayElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1321,7 +1321,7 @@ public class ArrayPropsWithOptionalGenNativeComponentPropsArrayOfArrayOfObjectEl
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalGenNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1412,7 +1412,7 @@ public class ArrayPropsWithOptionalGenNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture ARRAY_PROPS_WITH_OPTIONAL_OBJECT_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1435,7 +1435,7 @@ public class ArrayPropsWithOptionalObjectGenNativeComponentPropsObjectElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElementObjectElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElementObjectElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1458,7 +1458,7 @@ public class ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElementObje
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1481,7 +1481,7 @@ public class ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayOfArrayOfObjectElementElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1504,7 +1504,7 @@ public class ArrayPropsWithOptionalObjectGenNativeComponentPropsArrayOfArrayOfOb
   }
 }
 ",
-  "java/com/react/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ArrayPropsWithOptionalObjectGenNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1595,7 +1595,7 @@ public class ArrayPropsWithOptionalObjectGenNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture BOOLEAN_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/BooleanPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/BooleanPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1622,7 +1622,7 @@ public class BooleanPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture COLOR_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/ColorPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/ColorPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1650,7 +1650,7 @@ public class ColorPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture COMMANDS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/CommandNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/CommandNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1674,7 +1674,7 @@ public class CommandNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture COMMANDS_AND_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/CommandNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/CommandNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1702,7 +1702,7 @@ public class CommandNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture DIMENSION_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/CustomView/DimensionPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/CustomView/DimensionPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1731,7 +1731,7 @@ public class DimensionPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture DOUBLE_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/DoublePropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/DoublePropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1783,7 +1783,7 @@ public class DoublePropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture EVENT_NESTED_OBJECT_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/EventsNestedObjectNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/EventsNestedObjectNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1810,7 +1810,7 @@ public class EventsNestedObjectNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture EVENT_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/EventsNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/EventsNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1837,7 +1837,7 @@ public class EventsNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture EVENTS_WITH_PAPER_NAME 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/InterfaceOnlyComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/InterfaceOnlyComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1865,7 +1865,7 @@ exports[`GeneratePropsJavaPojo can generate fixture EXCLUDE_ANDROID_IOS 1`] = `M
 
 exports[`GeneratePropsJavaPojo can generate fixture EXCLUDE_IOS_TWO_COMPONENTS_DIFFERENT_FILES 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ComponentFile1/ExcludedIosComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ComponentFile1/ExcludedIosComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1884,7 +1884,7 @@ public class ExcludedIosComponentProps {
 
 }
 ",
-  "java/com/react/react/viewmanagers/ComponentFile2/MultiFileIncludedNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ComponentFile2/MultiFileIncludedNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1911,7 +1911,7 @@ public class MultiFileIncludedNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture FLOAT_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/FloatPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/FloatPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1963,7 +1963,7 @@ public class FloatPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture IMAGE_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ImagePropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ImagePropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -1992,7 +1992,7 @@ public class ImagePropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture INSETS_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ScrollView/InsetsPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ScrollView/InsetsPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2021,7 +2021,7 @@ public class InsetsPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture INT32_ENUM_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/Int32EnumPropsNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/Int32EnumPropsNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2049,7 +2049,7 @@ public class Int32EnumPropsNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture INTEGER_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/IntegerPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/IntegerPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2086,7 +2086,7 @@ public class IntegerPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture INTERFACE_ONLY 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/InterfaceOnlyComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/InterfaceOnlyComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2114,7 +2114,7 @@ public class InterfaceOnlyComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture MIXED_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/CustomView/MixedPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/CustomView/MixedPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2142,7 +2142,7 @@ public class MixedPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture MULTI_NATIVE_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Slider/ImageColorPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Slider/ImageColorPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2186,7 +2186,7 @@ public class ImageColorPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture NO_PROPS_NO_EVENTS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/NoPropsNoEvents/NoPropsNoEventsComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/NoPropsNoEvents/NoPropsNoEventsComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2210,7 +2210,7 @@ public class NoPropsNoEventsComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture OBJECT_PROPS 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2233,7 +2233,7 @@ public class ObjectPropsPropsObjectPropObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2267,7 +2267,7 @@ public class ObjectPropsPropsObjectPropObjectPrimitiveRequiredProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2290,7 +2290,7 @@ public class ObjectPropsPropsObjectPropNestedPropANestedPropB {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2312,7 +2312,7 @@ public class ObjectPropsPropsObjectPropNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2335,7 +2335,7 @@ public class ObjectPropsPropsObjectPropNestedArrayAsPropertyArrayPropElement {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectPropNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2358,7 +2358,7 @@ public class ObjectPropsPropsObjectPropNestedArrayAsProperty {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsPropsObjectProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2446,7 +2446,7 @@ public class ObjectPropsPropsObjectProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2473,7 +2473,7 @@ public class ObjectPropsProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture OBJECT_PROPS_WITH_OPTIONAL_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2496,7 +2496,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2530,7 +2530,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropObjectPrimitiveRequiredPro
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2553,7 +2553,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropNestedPropANestedPropB {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2575,7 +2575,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2598,7 +2598,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsPropertyArray
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2621,7 +2621,7 @@ public class ObjectPropsWithOptionalGenPropsObjectPropNestedArrayAsProperty {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenPropsObjectProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2709,7 +2709,7 @@ public class ObjectPropsWithOptionalGenPropsObjectProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalGenProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2736,7 +2736,7 @@ public class ObjectPropsWithOptionalGenProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture OBJECT_PROPS_WITH_OPTIONAL_OBJECT_GEN 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropObjectArrayProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropObjectArrayProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2759,7 +2759,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropObjectArrayProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropObjectPrimitiveRequiredProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2793,7 +2793,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropObjectPrimitiveRequi
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropANestedPropB.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropANestedPropB.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2816,7 +2816,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropANestedPro
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropA.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropA.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2838,7 +2838,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropNestedPropA {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsPropertyArrayPropElement.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2861,7 +2861,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsPropert
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsProperty.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsProperty.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2884,7 +2884,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectPropNestedArrayAsPropert
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectProp.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenPropsObjectProp.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2972,7 +2972,7 @@ public class ObjectPropsWithOptionalObjectGenPropsObjectProp {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ObjectPropsNativeComponent/ObjectPropsWithOptionalObjectGenProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -2999,7 +2999,7 @@ public class ObjectPropsWithOptionalObjectGenProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture POINT_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/PointPropNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/PointPropNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3028,7 +3028,7 @@ public class PointPropNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture STRING_ENUM_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/StringEnumPropsNativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/StringEnumPropsNativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3056,7 +3056,7 @@ public class StringEnumPropsNativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture STRING_PROP 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/Switch/StringPropComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/Switch/StringPropComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3089,7 +3089,7 @@ public class StringPropComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture TWO_COMPONENTS_DIFFERENT_FILES 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/ComponentFile1/MultiFile1NativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ComponentFile1/MultiFile1NativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3111,7 +3111,7 @@ public class MultiFile1NativeComponentProps {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/ComponentFile2/MultiFile2NativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/ComponentFile2/MultiFile2NativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3138,7 +3138,7 @@ public class MultiFile2NativeComponentProps {
 
 exports[`GeneratePropsJavaPojo can generate fixture TWO_COMPONENTS_SAME_FILE 1`] = `
 Map {
-  "java/com/react/react/viewmanagers/MyComponents/MultiComponent1NativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/MyComponents/MultiComponent1NativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the
@@ -3160,7 +3160,7 @@ public class MultiComponent1NativeComponentProps {
   }
 }
 ",
-  "java/com/react/react/viewmanagers/MyComponents/MultiComponent2NativeComponentProps.java" => "/**
+  "java/com/facebook/react/viewmanagers/MyComponents/MultiComponent2NativeComponentProps.java" => "/**
 * Copyright (c) Meta Platforms, Inc. and affiliates.
 *
 * This source code is licensed under the MIT license found in the

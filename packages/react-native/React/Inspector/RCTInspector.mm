@@ -20,7 +20,7 @@ using namespace facebook::react;
 using namespace facebook::react::jsinspector_modern;
 
 // This is a port of the Android impl, at
-// react-native-github/ReactAndroid/src/main/java/com/react/react/bridge/Inspector.java
+// react-native-github/ReactAndroid/src/main/java/com/facebook/react/bridge/Inspector.java
 // react-native-github/ReactAndroid/src/main/jni/react/jni/JInspector.cpp
 // please keep consistent :)
 

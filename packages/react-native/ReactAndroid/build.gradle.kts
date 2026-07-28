@@ -627,8 +627,8 @@ android {
             "src/main/res/views/view",
         )
     )
-    java.exclude("com/react/react/processing")
-    java.exclude("com/react/react/module/processing")
+    java.exclude("com/facebook/react/processing")
+    java.exclude("com/facebook/react/module/processing")
   }
 
   lint {
@@ -683,8 +683,8 @@ android {
 
 tasks.withType<KotlinCompile>().configureEach {
   exclude("com/facebook/annotationprocessors/**")
-  exclude("com/react/react/processing/**")
-  exclude("com/react/react/module/processing/**")
+  exclude("com/facebook/react/processing/**")
+  exclude("com/facebook/react/module/processing/**")
 }
 
 dependencies {

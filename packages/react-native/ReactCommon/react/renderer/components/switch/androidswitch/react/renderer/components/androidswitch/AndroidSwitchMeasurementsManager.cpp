@@ -23,7 +23,7 @@ Size AndroidSwitchMeasurementsManager::measure(
         contextContainer_->at<jni::global_ref<jobject>>("FabricUIManager");
 
     static auto measure =
-        jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+        jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
             ->getMethod<jlong(
                 jint,
                 jstring,

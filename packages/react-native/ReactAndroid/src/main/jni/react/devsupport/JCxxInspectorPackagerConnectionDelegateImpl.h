@@ -28,7 +28,7 @@ namespace facebook::react::jsinspector_modern {
 struct JCxxInspectorPackagerConnectionDelegateImpl
     : public jni::JavaClass<JCxxInspectorPackagerConnectionDelegateImpl> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/devsupport/CxxInspectorPackagerConnection$DelegateImpl;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/devsupport/CxxInspectorPackagerConnection$DelegateImpl;";
 
   std::unique_ptr<InspectorPackagerConnectionDelegate> wrapInUniquePtr();
 

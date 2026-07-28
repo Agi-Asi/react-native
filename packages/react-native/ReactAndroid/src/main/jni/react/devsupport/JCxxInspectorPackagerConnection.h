@@ -22,7 +22,7 @@ namespace facebook::react::jsinspector_modern {
  */
 class JCxxInspectorPackagerConnection : public jni::HybridClass<JCxxInspectorPackagerConnection> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/devsupport/CxxInspectorPackagerConnection;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/devsupport/CxxInspectorPackagerConnection;";
 
   static void registerNatives();
 

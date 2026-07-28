@@ -22,7 +22,7 @@ class MessageQueueThread;
 
 struct [[deprecated("This API will be removed along with the legacy architecture.")]] JMethodDescriptor
     : public jni::JavaClass<JMethodDescriptor> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/bridge/JavaModuleWrapper$MethodDescriptor;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/bridge/JavaModuleWrapper$MethodDescriptor;";
 
   jni::local_ref<JReflectMethod::javaobject> getMethod() const;
   std::string getSignature() const;
@@ -32,7 +32,7 @@ struct [[deprecated("This API will be removed along with the legacy architecture
 
 struct [[deprecated("This API will be removed along with the legacy architecture.")]] JavaModuleWrapper
     : jni::JavaClass<JavaModuleWrapper> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/bridge/JavaModuleWrapper;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/bridge/JavaModuleWrapper;";
 
   jni::local_ref<JBaseJavaModule::javaobject> getModule()
   {

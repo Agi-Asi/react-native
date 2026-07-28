@@ -13,7 +13,7 @@
 namespace facebook::react {
 void configurePlatformColorCacheInvalidationHook(std::function<void()>&& hook) {
   auto appearanceModuleClass = jni::findClassLocal(
-      "com/react/react/modules/appearance/AppearanceModule");
+      "com/facebook/react/modules/appearance/AppearanceModule");
   if (appearanceModuleClass) {
     auto callbackField =
         appearanceModuleClass->getStaticField<jni::JRunnable::javaobject>(

@@ -16,7 +16,7 @@ namespace facebook::react {
 using namespace facebook::jni;
 
 constexpr static auto ComponentNameResolverJavaDescriptor =
-    "com/react/react/uimanager/ComponentNameResolver";
+    "com/facebook/react/uimanager/ComponentNameResolver";
 
 void ComponentNameResolverBinding::registerNatives() {
   javaClassStatic()->registerNatives({

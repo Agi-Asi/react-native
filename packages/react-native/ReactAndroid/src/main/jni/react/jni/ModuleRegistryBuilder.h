@@ -23,7 +23,7 @@ class MessageQueueThread;
 class [[deprecated("This API will be removed along with the legacy architecture.")]] ModuleHolder
     : public jni::JavaClass<ModuleHolder> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/bridge/ModuleHolder;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/bridge/ModuleHolder;";
 
   std::string getName() const;
   xplat::module::CxxModule::Provider getProvider(const std::string &moduleName) const;

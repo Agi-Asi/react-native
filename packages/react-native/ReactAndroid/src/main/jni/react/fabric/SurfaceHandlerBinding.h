@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class SurfaceHandlerBinding : public jni::HybridClass<SurfaceHandlerBinding> {
  public:
-  constexpr static const char *const kJavaDescriptor = "Lcom/react/react/fabric/SurfaceHandlerBinding;";
+  constexpr static const char *const kJavaDescriptor = "Lcom/facebook/react/fabric/SurfaceHandlerBinding;";
 
   static void registerNatives();
 

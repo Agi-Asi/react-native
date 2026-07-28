@@ -39,7 +39,7 @@ std::function<void()> wrapRunnable(std::function<void()>&& runnable) {
       // We can't do as much parsing here as we do in ExceptionManager.js
       std::string message = ex.getMessage() + ", stack:\n" + ex.getStack();
       throwNewJavaException(
-          "com/react/react/common/JavascriptException", message.c_str());
+          "com/facebook/react/common/JavascriptException", message.c_str());
     }
   };
 }

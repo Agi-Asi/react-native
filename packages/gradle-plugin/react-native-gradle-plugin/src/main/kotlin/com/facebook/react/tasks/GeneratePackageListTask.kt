@@ -119,7 +119,7 @@ abstract class GeneratePackageListTask : DefaultTask() {
       generatedFileContentsTemplate.replace("{{ packageClassInstances }}", packageClassInstance)
 
   companion object {
-    const val GENERATED_FILENAME = "com/react/react/PackageList.java"
+    const val GENERATED_FILENAME = "com/facebook/react/PackageList.java"
 
     /**
      * Before adding the package replacement mechanism, BuildConfig and R classes were imported

@@ -9,7 +9,7 @@
  * @preventMunge
  * @generated SignedSource<<e7f6759bcc8955193867c6ab42bd07ad>>
  *
- * This file was sync'd from the react/react repository.
+ * This file was sync'd from the facebook/react repository.
  */
 
 "use strict";

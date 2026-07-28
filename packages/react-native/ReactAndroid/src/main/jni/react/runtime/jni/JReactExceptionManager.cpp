@@ -19,14 +19,14 @@ namespace {
 class ProcessedError : public facebook::jni::JavaClass<ProcessedError> {
  public:
   static auto constexpr kJavaDescriptor =
-      "Lcom/react/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedError;";
+      "Lcom/facebook/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedError;";
 };
 
 class ProcessedErrorStackFrameImpl
     : public facebook::jni::JavaClass<ProcessedErrorStackFrameImpl> {
  public:
   static auto constexpr kJavaDescriptor =
-      "Lcom/react/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedErrorStackFrameImpl;";
+      "Lcom/facebook/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedErrorStackFrameImpl;";
 
   static facebook::jni::local_ref<ProcessedErrorStackFrameImpl> create(
       const JsErrorHandler::ProcessedError::StackFrame& frame) {
@@ -42,7 +42,7 @@ class ProcessedErrorImpl
     : public facebook::jni::JavaClass<ProcessedErrorImpl, ProcessedError> {
  public:
   static auto constexpr kJavaDescriptor =
-      "Lcom/react/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedErrorImpl;";
+      "Lcom/facebook/react/interfaces/exceptionmanager/ReactJsExceptionHandler$ProcessedErrorImpl;";
 
   static facebook::jni::local_ref<ProcessedErrorImpl> create(
       jsi::Runtime& runtime,

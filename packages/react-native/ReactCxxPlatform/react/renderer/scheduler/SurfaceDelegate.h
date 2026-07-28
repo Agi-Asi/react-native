@@ -14,7 +14,7 @@ namespace facebook::react {
  * Interface for handling a surface in React Native. Each platform can have
  * custom logic to show/hide.
  * Inspired by
- * xplat/js/react-native-github/packages/react-native/ReactAndroid/src/main/java/com/react/react/common/SurfaceDelegate.java
+ * xplat/js/react-native-github/packages/react-native/ReactAndroid/src/main/java/com/facebook/react/common/SurfaceDelegate.java
  */
 class SurfaceDelegate {
  public:

@@ -22,7 +22,7 @@
 namespace facebook::react {
 
 struct JTracingState : public jni::JavaClass<JTracingState> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/devsupport/inspector/TracingState;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/devsupport/inspector/TracingState;";
 };
 
 namespace {
@@ -35,7 +35,7 @@ enum class TracingState {
 
 jni::local_ref<JTracingState::javaobject> convertCPPTracingStateToJava(TracingState tracingState)
 {
-  auto tracingStateClass = jni::findClassLocal("com/react/react/devsupport/inspector/TracingState");
+  auto tracingStateClass = jni::findClassLocal("com/facebook/react/devsupport/inspector/TracingState");
   auto valueOfMethod = tracingStateClass->getStaticMethod<JTracingState(jstring)>("valueOf");
 
   switch (tracingState) {
@@ -56,11 +56,11 @@ jni::local_ref<JTracingState::javaobject> convertCPPTracingStateToJava(TracingSt
 } // namespace
 
 struct JTaskInterface : public jni::JavaClass<JTaskInterface> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/interfaces/TaskInterface;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/interfaces/TaskInterface;";
 };
 
 struct JTracingStateListener : public jni::JavaClass<JTracingStateListener> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/devsupport/inspector/TracingStateListener;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/devsupport/inspector/TracingStateListener;";
 
   void onStateChanged(TracingState tracingState, bool screenshotsEnabled) const
   {
@@ -71,7 +71,7 @@ struct JTracingStateListener : public jni::JavaClass<JTracingStateListener> {
 };
 
 struct JFrameTimingSequence : public jni::JavaClass<JFrameTimingSequence> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/devsupport/inspector/FrameTimingSequence;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/devsupport/inspector/FrameTimingSequence;";
 
   uint64_t getId() const
   {
@@ -116,7 +116,7 @@ struct JFrameTimingSequence : public jni::JavaClass<JFrameTimingSequence> {
 };
 
 struct JReactHostImpl : public jni::JavaClass<JReactHostImpl> {
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/runtime/ReactHostImpl;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/runtime/ReactHostImpl;";
 
   jni::local_ref<JTaskInterface::javaobject> reload(const std::string &reason)
   {
@@ -216,7 +216,7 @@ class TracingDelegate : public jsinspector_modern::HostTargetTracingDelegate {
 class JReactHostInspectorTarget : public jni::HybridClass<JReactHostInspectorTarget>,
                                   public jsinspector_modern::HostTargetDelegate {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/runtime/ReactHostInspectorTarget;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/runtime/ReactHostInspectorTarget;";
 
   ~JReactHostInspectorTarget() override;
 

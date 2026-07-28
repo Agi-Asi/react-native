@@ -9,7 +9,7 @@
  * @flow
  * @generated SignedSource<<7a063365bcf9d96b1cd8714d309e5b92>>
  *
- * This file is no longer sync'd from the react/react repository.
+ * This file is no longer sync'd from the facebook/react repository.
  * The version compatibility check is removed. Use at your own risk.
  */
 'use strict';

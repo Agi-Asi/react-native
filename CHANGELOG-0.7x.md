@@ -4146,7 +4146,7 @@ Read the [announcement blogpost here](https://reactnative.dev/blog/2023/01/12/ve
 
 - **Changes to Console Logging:** `LogBox.ignoreLog` no longer filters console logs. This means you will start seeing logs in the console that you have silenced in LogBox. See [this comment](https://github.com/react/react-native/pull/34476#issuecomment-1240667794) for more details.
 - **Removed AsyncStorage and MaskedViewIOS**: These components have been deprecated since version [0.59](https://github.com/react/react-native/blob/main/CHANGELOG.md#deprecated-8), so it’s time we remove them entirely. For alternatives, please check [React Native Directory](https://reactnative.directory/) for community packages that cover those use cases.
-- **JSCRuntime moved to react-jsc:** react-jsi is now split into react-jsc and react-jsi. If you use JSCRuntime, you will need to add react-jsc as a dependency ([react/react-native@6b129d8](https://github.com/react/react-native/commit/6b129d81ed8cab301775d2a04971e255df9290de)).
+- **JSCRuntime moved to react-jsc:** react-jsi is now split into react-jsc and react-jsi. If you use JSCRuntime, you will need to add react-jsc as a dependency ([facebook/react-native@6b129d8](https://github.com/react/react-native/commit/6b129d81ed8cab301775d2a04971e255df9290de)).
 
 ### Added
 
@@ -4508,7 +4508,7 @@ Read the [announcement blogpost here](https://reactnative.dev/blog/2023/01/12/ve
 - Make sure that the React-Codegen.podspec does not enforce specific versions of its dependencies. ([bc074a300d](https://github.com/react/react-native/commit/bc074a300dc8a1d26a11965520dafd8f3e190e01) by [@cipolleschi](https://github.com/cipolleschi))
 - Various fixes for Hermes build-from-source behaviour. ([5dd0f7327b](https://github.com/react/react-native/commit/5dd0f7327bf6ef1e2d559e6f65769dab3c84fb19))
 - Correctly set -DCMAKE_BUILD_TYPE for Hermes on iOS ([c63133202b](https://github.com/react/react-native/commit/c63133202b015adc6cd94e77069586a619aca4a8) by [@cortinico](https://github.com/cortinico))
-- Https://github.com/react/react-native/pull/35047 reverted. ([bbd432e999](https://github.com/react/react-native/commit/bbd432e9994eb3b3114d429913bb8ce1a4f6e877))
+- Https://github.com/facebook/react-native/pull/35047 reverted. ([bbd432e999](https://github.com/react/react-native/commit/bbd432e9994eb3b3114d429913bb8ce1a4f6e877))
 - Make sure that libraries created with `install_modules_dependencies` has the right C++ version. ([40ad31eacf](https://github.com/react/react-native/commit/40ad31eacf29e83ba91031b714c4de1f4d22e469) by [@cipolleschi](https://github.com/cipolleschi))
 - Make ManagedObjectWrapper compile on macOS ([76c7ccaa60](https://github.com/react/react-native/commit/76c7ccaa60c4e820757c5d8cd8ccc80a2cb5f4a0) by [@christophpurrer](https://github.com/christophpurrer))
 - Map `accessibilityRole: grid` to `UIAccessibilityTraitNone` ([f3d9f2ea23](https://github.com/react/react-native/commit/f3d9f2ea233304870bd4ab67d9682af6eb0ae16f) by [@NickGerleman](https://github.com/NickGerleman))

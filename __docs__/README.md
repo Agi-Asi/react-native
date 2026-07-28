@@ -71,7 +71,7 @@ TODO: Explain the different components of React Native at a high level.
     - Host Platform Interface
   - Android
     - UI
-      - [Events](../packages/react-native/ReactAndroid/src/main/java/com/react/react/fabric/events/__docs__/README.md)
+      - [Events](../packages/react-native/ReactAndroid/src/main/java/com/facebook/react/fabric/events/__docs__/README.md)
       - Mounting
   - iOS
     - UI

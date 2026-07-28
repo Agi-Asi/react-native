@@ -10,7 +10,7 @@
 
 // This file uses Flow comment syntax so that it may be used from source as a
 // transformer without itself requiring transformation, such as in
-// react/react-native's own tests.
+// facebook/react-native's own tests.
 
 'use strict';
 

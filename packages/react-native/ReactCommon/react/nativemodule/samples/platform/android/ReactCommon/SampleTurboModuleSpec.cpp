@@ -106,7 +106,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getArray(
           rt,
           ArrayKind,
           "getArray",
-          "(Lcom/react/react/bridge/ReadableArray;)Lcom/react/react/bridge/WritableArray;",
+          "(Lcom/facebook/react/bridge/ReadableArray;)Lcom/facebook/react/bridge/WritableArray;",
           args,
           count,
           cachedMethodId);
@@ -124,7 +124,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getObject(
           rt,
           ObjectKind,
           "getObject",
-          "(Lcom/react/react/bridge/ReadableMap;)Lcom/react/react/bridge/WritableMap;",
+          "(Lcom/facebook/react/bridge/ReadableMap;)Lcom/facebook/react/bridge/WritableMap;",
           args,
           count,
           cachedMethodId);
@@ -142,7 +142,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getUnsafeObject(
           rt,
           ObjectKind,
           "getUnsafeObject",
-          "(Lcom/react/react/bridge/ReadableMap;)Lcom/react/react/bridge/WritableMap;",
+          "(Lcom/facebook/react/bridge/ReadableMap;)Lcom/facebook/react/bridge/WritableMap;",
           args,
           count,
           cachedMethodId);
@@ -172,7 +172,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getValue(
           rt,
           ObjectKind,
           "getValue",
-          "(DLjava/lang/String;Lcom/react/react/bridge/ReadableMap;)Lcom/react/react/bridge/WritableMap;",
+          "(DLjava/lang/String;Lcom/facebook/react/bridge/ReadableMap;)Lcom/facebook/react/bridge/WritableMap;",
           args,
           count,
           cachedMethodId);
@@ -190,7 +190,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getValueWithCallback(
           rt,
           VoidKind,
           "getValueWithCallback",
-          "(Lcom/react/react/bridge/Callback;)V",
+          "(Lcom/facebook/react/bridge/Callback;)V",
           args,
           count,
           cachedMethodId);
@@ -208,7 +208,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getValueWithPromise(
           rt,
           PromiseKind,
           "getValueWithPromise",
-          "(ZLcom/react/react/bridge/Promise;)V",
+          "(ZLcom/facebook/react/bridge/Promise;)V",
           args,
           count,
           cachedMethodId);
@@ -238,7 +238,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getObjectThrows(
           rt,
           ObjectKind,
           "getObjectThrows",
-          "(Lcom/react/react/bridge/ReadableMap;)Lcom/react/react/bridge/WritableMap;",
+          "(Lcom/facebook/react/bridge/ReadableMap;)Lcom/facebook/react/bridge/WritableMap;",
           args,
           count,
           cachedMethodId);
@@ -256,7 +256,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_promiseThrows(
           rt,
           PromiseKind,
           "promiseThrows",
-          "(Lcom/react/react/bridge/Promise;)V",
+          "(Lcom/facebook/react/bridge/Promise;)V",
           args,
           count,
           cachedMethodId);
@@ -286,7 +286,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getObjectAssert(
           rt,
           ObjectKind,
           "getObjectAssert",
-          "(Lcom/react/react/bridge/ReadableMap;)Lcom/react/react/bridge/WritableMap;",
+          "(Lcom/facebook/react/bridge/ReadableMap;)Lcom/facebook/react/bridge/WritableMap;",
           args,
           count,
           cachedMethodId);
@@ -304,7 +304,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_promiseAssert(
           rt,
           PromiseKind,
           "promiseAssert",
-          "(Lcom/react/react/bridge/Promise;)V",
+          "(Lcom/facebook/react/bridge/Promise;)V",
           args,
           count,
           cachedMethodId);
@@ -322,7 +322,7 @@ __hostFunction_NativeSampleTurboModuleSpecJSI_getImageUrl(
           rt,
           PromiseKind,
           "getImageUrl",
-          "(Lcom/react/react/bridge/Promise;)V",
+          "(Lcom/facebook/react/bridge/Promise;)V",
           args,
           count,
           cachedMethodId);

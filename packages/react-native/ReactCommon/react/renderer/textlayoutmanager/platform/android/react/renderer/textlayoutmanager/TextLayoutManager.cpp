@@ -53,7 +53,7 @@ Size measureText(
       contextContainer->at<jni::global_ref<jobject>>("FabricUIManager");
 
   static auto measure =
-      jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+      jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
           ->getMethod<jlong(
               jint,
               JReadableMapBuffer::javaobject,
@@ -252,7 +252,7 @@ LinesMeasurements TextLayoutManager::measureLines(
     const jni::global_ref<jobject>& fabricUIManager =
         contextContainer_->at<jni::global_ref<jobject>>("FabricUIManager");
     static auto measureLines =
-        jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+        jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
             ->getMethod<NativeArray::javaobject(
                 JReadableMapBuffer::javaobject,
                 JReadableMapBuffer::javaobject,
@@ -302,7 +302,7 @@ TextLayoutManager::PreparedTextLayout TextLayoutManager::prepareLayout(
     const TextLayoutContext& layoutContext,
     const LayoutConstraints& layoutConstraints) const {
   static auto prepareTextLayout =
-      jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+      jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
           ->getMethod<JPreparedLayout::javaobject(
               jint,
               JReadableMapBuffer::javaobject,
@@ -313,7 +313,7 @@ TextLayoutManager::PreparedTextLayout TextLayoutManager::prepareLayout(
               jfloat)>("prepareTextLayout");
 
   static auto reusePreparedLayoutWithNewReactTags =
-      jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+      jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
           ->getMethod<JPreparedLayout::javaobject(
               JPreparedLayout::javaobject, jintArray)>(
               "reusePreparedLayoutWithNewReactTags");
@@ -387,7 +387,7 @@ TextMeasurement TextLayoutManager::measurePreparedLayout(
       contextContainer_->at<jni::global_ref<jobject>>("FabricUIManager");
 
   static auto measurePreparedLayout =
-      jni::findClassStatic("com/react/react/fabric/FabricUIManager")
+      jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
           ->getMethod<jni::JArrayFloat(
               JPreparedLayout::javaobject, jfloat, jfloat, jfloat, jfloat)>(
               "measurePreparedLayout");

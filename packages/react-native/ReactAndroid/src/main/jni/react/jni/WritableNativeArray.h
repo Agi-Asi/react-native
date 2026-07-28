@@ -18,11 +18,11 @@ namespace facebook::react {
 struct ReadableNativeMap;
 
 struct WritableArray : jni::JavaClass<WritableArray> {
-  static auto constexpr kJavaDescriptor = "Lcom/react/react/bridge/WritableArray;";
+  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/bridge/WritableArray;";
 };
 
 struct WritableNativeArray : public jni::HybridClass<WritableNativeArray, ReadableNativeArray> {
-  static constexpr const char *kJavaDescriptor = "Lcom/react/react/bridge/WritableNativeArray;";
+  static constexpr const char *kJavaDescriptor = "Lcom/facebook/react/bridge/WritableNativeArray;";
 
   WritableNativeArray();
   WritableNativeArray(folly::dynamic &&val);

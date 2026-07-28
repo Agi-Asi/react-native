@@ -20,7 +20,7 @@ namespace facebook::react {
 class DefaultTurboModuleManagerDelegate
     : public jni::HybridClass<DefaultTurboModuleManagerDelegate, TurboModuleManagerDelegate> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/defaults/DefaultTurboModuleManagerDelegate;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/defaults/DefaultTurboModuleManagerDelegate;";
 
   static jni::local_ref<jhybriddata> initHybrid(
       jni::alias_ref<jclass> /*unused*/,

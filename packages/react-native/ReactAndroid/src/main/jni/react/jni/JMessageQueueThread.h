@@ -16,7 +16,7 @@ namespace facebook::react {
 
 class JavaMessageQueueThread : public jni::JavaClass<JavaMessageQueueThread> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/react/react/bridge/queue/MessageQueueThread;";
+  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/bridge/queue/MessageQueueThread;";
 };
 
 class JMessageQueueThread : public MessageQueueThread {

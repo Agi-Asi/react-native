@@ -19,12 +19,12 @@ namespace facebook::react {
 class Instance;
 
 struct JCallback : public jni::JavaClass<JCallback> {
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/bridge/Callback;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/bridge/Callback;";
 };
 
 class JCxxCallbackImpl : public jni::HybridClass<JCxxCallbackImpl, JCallback> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/bridge/CxxCallbackImpl;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/bridge/CxxCallbackImpl;";
 
   static void registerNatives()
   {

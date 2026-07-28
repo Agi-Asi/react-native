@@ -41,12 +41,12 @@ function generateAndroidArtifacts(releaseVersion /*: string */) {
     if (
       !test(
         '-e',
-        `/tmp/maven-local/com/react/react/react-android/${releaseVersion}/${name}`,
+        `/tmp/maven-local/com/facebook/react/react-android/${releaseVersion}/${name}`,
       )
     ) {
       echo(
         `Failing as expected file: \n\
-      /tmp/maven-local/com/react/react/react-android/${releaseVersion}/${name}\n\
+      /tmp/maven-local/com/facebook/react/react-android/${releaseVersion}/${name}\n\
       was not correctly generated.`,
       );
       exit(1);

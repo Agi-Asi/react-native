@@ -13,7 +13,7 @@ namespace facebook::react {
 
 namespace exceptions {
 const char* gUnexpectedNativeTypeExceptionClass =
-    "com/react/react/bridge/UnexpectedNativeTypeException";
+    "com/facebook/react/bridge/UnexpectedNativeTypeException";
 }
 
 namespace {

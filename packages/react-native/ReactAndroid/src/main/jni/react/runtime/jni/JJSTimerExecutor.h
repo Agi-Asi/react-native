@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class JJSTimerExecutor : public jni::HybridClass<JJSTimerExecutor> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/react/react/runtime/JSTimerExecutor;";
+  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/runtime/JSTimerExecutor;";
 
   static void registerNatives();
 
