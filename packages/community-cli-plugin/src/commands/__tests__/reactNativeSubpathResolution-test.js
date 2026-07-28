@@ -15,60 +15,29 @@ const path = require('node:path');
 const COMMANDS_DIR = path.join(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '../../../../..');
 
-/**
- * The command wrappers reach into the `react-native` package with
- * `require.resolve('react-native/...')`. Those specifiers go through
- * react-native's `exports` map, which — unlike legacy CJS resolution — neither
- * appends extensions nor falls back to a directory's `index.js`. A specifier
- * missing either therefore throws, but only at runtime when the command is
- * invoked.
- *
- * Resolution must be checked in a real `node` process: Jest's `moduleNameMapper`
- * remaps `react-native` to the source tree and bypasses the `exports` map
- * entirely, so resolving in-band here would pass even when production fails.
- */
-function collectReactNativeSpecifiers(): Array<{file: string, spec: string}> {
-  const found = [];
-  for (const name of fs.readdirSync(COMMANDS_DIR)) {
-    if (!name.endsWith('.js')) {
-      continue;
-    }
-    const filePath = path.join(COMMANDS_DIR, name);
-    if (!fs.statSync(filePath).isFile()) {
-      continue;
-    }
-    const source = fs.readFileSync(filePath, 'utf8');
-    for (const match of source.matchAll(/'(react-native\/[^']+)'/g)) {
-      found.push({file: name, spec: match[1]});
-    }
-  }
-  return found;
-}
+// The wrappers load scripts as `react-native/<subpath>`, resolved through
+// react-native's `exports` map: no extension guessing, no index.js fallback.
+// Must run in a real node process — Jest's moduleNameMapper bypasses `exports`
+// and would pass either way.
+const specifiers = fs
+  .readdirSync(COMMANDS_DIR)
+  .filter(name => name.endsWith('.js'))
+  .flatMap(name =>
+    [
+      ...fs
+        .readFileSync(path.join(COMMANDS_DIR, name), 'utf8')
+        .matchAll(/'(react-native\/[^']+)'/g),
+    ].map(match => ({file: name, spec: match[1]})),
+  );
 
-function resolvesInNode(spec: string): boolean {
-  try {
-    execFileSync(
-      process.execPath,
-      ['-e', `require.resolve(${JSON.stringify(spec)})`],
-      {cwd: REPO_ROOT, stdio: 'ignore'},
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
+test('found specifiers to check', () => {
+  expect(specifiers.length).toBeGreaterThan(0);
+});
 
-describe('react-native subpath specifiers used by the command wrappers', () => {
-  const specifiers = collectReactNativeSpecifiers();
-
-  test('at least one specifier is covered by this test', () => {
-    expect(specifiers.length).toBeGreaterThan(0);
-  });
-
-  test.each(specifiers)(
-    "$file resolves $spec through react-native's exports map",
-    ({spec}) => {
-      expect(resolvesInNode(spec)).toBe(true);
-    },
+test.each(specifiers)('$file resolves $spec', ({spec}) => {
+  execFileSync(
+    process.execPath,
+    ['-e', `require.resolve(${JSON.stringify(spec)})`],
+    {cwd: REPO_ROOT, stdio: 'ignore'},
   );
 });
