@@ -11,15 +11,7 @@
 const {getPackages} = require('../shared/monorepoUtils');
 
 /*::
-import type {ProjectInfo} from '../shared/monorepoUtils';
-
-type Repository =
-  | string
-  | {
-      type?: string,
-      url?: string,
-      ...
-    };
+import type {ProjectInfo, Repository} from '../shared/monorepoUtils';
 */
 
 const CANONICAL_REPOSITORY_URLS = new Set([

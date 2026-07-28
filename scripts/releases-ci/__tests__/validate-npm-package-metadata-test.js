@@ -13,12 +13,7 @@ const {
 } = require('../validate-npm-package-metadata');
 
 /*::
-import type {PackageInfo} from '../../shared/monorepoUtils';
-
-type Repository = {
-  type: string,
-  url: string,
-};
+import type {PackageInfo, Repository} from '../../shared/monorepoUtils';
 */
 
 function packageInfo(
