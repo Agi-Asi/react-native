@@ -23,7 +23,7 @@ class JCxxInspectorPackagerConnectionWebSocketDelegate
     : public jni::HybridClass<JCxxInspectorPackagerConnectionWebSocketDelegate> {
  public:
   static auto constexpr kJavaDescriptor =
-      "Lcom/facebook/react/devsupport/CxxInspectorPackagerConnection$WebSocketDelegate;";
+      "Lcom/react/react/devsupport/CxxInspectorPackagerConnection$WebSocketDelegate;";
 
   void didFailWithError(jni::alias_ref<jni::JInteger> posixCode, const std::string &error);
 

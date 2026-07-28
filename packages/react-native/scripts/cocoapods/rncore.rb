@@ -368,16 +368,16 @@ class ReactNativeCoreUtils
             ENV['ENTERPRISE_REPOSITORY'] != nil && ENV['ENTERPRISE_REPOSITORY'] != "" ?
             ENV['ENTERPRISE_REPOSITORY'] :
             "https://repo1.maven.org/maven2"
-        group = "com/facebook/react"
+        group = "com/react/react"
         # Sample url from Maven:
-        # https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/0.81.0/react-native-artifacts-0.81.0-reactnative-core-debug.tar.gz
+        # https://repo1.maven.org/maven2/com/react/react/react-native-artifacts/0.81.0/react-native-artifacts-0.81.0-reactnative-core-debug.tar.gz
         return "#{maven_repo_url}/#{group}/react-native-artifacts/#{version}/react-native-artifacts-#{version}-reactnative-core-#{dsyms ? "dSYM-" : ""}#{build_type.to_s}.tar.gz"
     end
 
     def self.nightly_tarball_url(version, configuration, dsyms = false)
         artefact_coordinate = "react-native-artifacts"
         artefact_name = "reactnative-core-#{dsyms ? "dSYM-" : ""}#{configuration ? configuration : "debug"}.tar.gz"
-        xml_url = "https://central.sonatype.com/repository/maven-snapshots/com/facebook/react/#{artefact_coordinate}/#{version}-SNAPSHOT/maven-metadata.xml"
+        xml_url = "https://central.sonatype.com/repository/maven-snapshots/com/react/react/#{artefact_coordinate}/#{version}-SNAPSHOT/maven-metadata.xml"
 
         response = Net::HTTP.get_response(URI(xml_url))
         if response.is_a?(Net::HTTPSuccess)
@@ -386,7 +386,7 @@ class ReactNativeCoreUtils
           build_number = xml.elements['metadata/versioning/snapshot/buildNumber'].text
           full_version = "#{version}-#{timestamp}-#{build_number}"
 
-          final_url = "https://central.sonatype.com/repository/maven-snapshots/com/facebook/react/#{artefact_coordinate}/#{version}-SNAPSHOT/#{artefact_coordinate}-#{full_version}-#{artefact_name}"
+          final_url = "https://central.sonatype.com/repository/maven-snapshots/com/react/react/#{artefact_coordinate}/#{version}-SNAPSHOT/#{artefact_coordinate}-#{full_version}-#{artefact_name}"
           return final_url
         else
           return ""

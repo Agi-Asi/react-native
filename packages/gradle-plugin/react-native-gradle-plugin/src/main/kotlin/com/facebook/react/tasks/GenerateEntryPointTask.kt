@@ -59,7 +59,7 @@ abstract class GenerateEntryPointTask : DefaultTask() {
       generatedFileContentsTemplate.replace("{{packageName}}", packageName)
 
   companion object {
-    const val GENERATED_FILENAME = "com/facebook/react/ReactNativeApplicationEntryPoint.java"
+    const val GENERATED_FILENAME = "com/react/react/ReactNativeApplicationEntryPoint.java"
 
     // language=java
     val generatedFileContentsTemplate =

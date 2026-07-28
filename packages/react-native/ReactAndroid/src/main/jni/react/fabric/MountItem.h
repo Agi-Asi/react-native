@@ -13,7 +13,7 @@
 namespace facebook::react {
 
 struct JMountItem : public jni::JavaClass<JMountItem> {
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/fabric/mounting/mountitems/MountItem;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/fabric/mounting/mountitems/MountItem;";
 };
 
 struct CppMountItem final {

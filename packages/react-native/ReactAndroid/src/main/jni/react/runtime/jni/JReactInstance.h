@@ -33,7 +33,7 @@ namespace facebook::react {
 
 class JReactInstance : public jni::HybridClass<JReactInstance> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/runtime/ReactInstance;";
+  constexpr static auto kJavaDescriptor = "Lcom/react/react/runtime/ReactInstance;";
 
   static jni::local_ref<jhybriddata> initHybrid(
       jni::alias_ref<jhybridobject> /*unused*/,

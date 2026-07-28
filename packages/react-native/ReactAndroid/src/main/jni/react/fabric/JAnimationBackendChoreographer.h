@@ -18,7 +18,7 @@ namespace facebook::react {
  */
 class JAnimationBackendChoreographer : public jni::JavaClass<JAnimationBackendChoreographer> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/fabric/AnimationBackendChoreographer;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/fabric/AnimationBackendChoreographer;";
 
   /**
    * Resumes animation frame callbacks.

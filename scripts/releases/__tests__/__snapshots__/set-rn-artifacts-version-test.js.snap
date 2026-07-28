@@ -93,7 +93,7 @@ exports[`updateReactNativeArtifacts should set nightly version: packages/react-n
 "
 `;
 
-exports[`updateReactNativeArtifacts should set nightly version: packages/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/systeminfo/ReactNativeVersion.kt 1`] = `
+exports[`updateReactNativeArtifacts should set nightly version: packages/react-native/ReactAndroid/src/main/java/com/react/react/modules/systeminfo/ReactNativeVersion.kt 1`] = `
 "/**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
@@ -250,7 +250,7 @@ exports[`updateReactNativeArtifacts should set release version: packages/react-n
 "
 `;
 
-exports[`updateReactNativeArtifacts should set release version: packages/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/systeminfo/ReactNativeVersion.kt 1`] = `
+exports[`updateReactNativeArtifacts should set release version: packages/react-native/ReactAndroid/src/main/java/com/react/react/modules/systeminfo/ReactNativeVersion.kt 1`] = `
 "/**
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  *

@@ -17,7 +17,7 @@ class CallInvoker;
 
 class CxxReactPackage : public jni::HybridClass<CxxReactPackage> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/runtime/cxxreactpackage/CxxReactPackage;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/runtime/cxxreactpackage/CxxReactPackage;";
 
   virtual std::shared_ptr<TurboModule> getModule(
       const std::string &name,

@@ -627,8 +627,8 @@ android {
             "src/main/res/views/view",
         )
     )
-    java.exclude("com/facebook/react/processing")
-    java.exclude("com/facebook/react/module/processing")
+    java.exclude("com/react/react/processing")
+    java.exclude("com/react/react/module/processing")
   }
 
   lint {
@@ -683,8 +683,8 @@ android {
 
 tasks.withType<KotlinCompile>().configureEach {
   exclude("com/facebook/annotationprocessors/**")
-  exclude("com/facebook/react/processing/**")
-  exclude("com/facebook/react/module/processing/**")
+  exclude("com/react/react/processing/**")
+  exclude("com/react/react/module/processing/**")
 }
 
 dependencies {
@@ -758,7 +758,7 @@ apply(from = "./publish.gradle")
 // We need to override the artifact ID as this project is called `ReactAndroid` but
 // the maven coordinates are on `react-android`.
 // Please note that the original coordinates, `react-native`, have been voided
-// as they caused https://github.com/facebook/react-native/issues/35210
+// as they caused https://github.com/react/react-native/issues/35210
 publishing {
   publications { getByName("release", MavenPublication::class) { artifactId = "react-android" } }
 }

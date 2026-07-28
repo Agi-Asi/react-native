@@ -24,7 +24,7 @@ namespace facebook::react {
 
 class TurboModuleManager : public jni::HybridClass<TurboModuleManager> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/internal/turbomodule/core/TurboModuleManager;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/internal/turbomodule/core/TurboModuleManager;";
   static jni::local_ref<jhybriddata> initHybrid(
       jni::alias_ref<jhybridobject> /* unused */,
       jni::alias_ref<CallInvokerHolder::javaobject> jsCallInvokerHolder,

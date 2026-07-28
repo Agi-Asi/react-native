@@ -13,7 +13,7 @@ namespace facebook::react::jsinspector_modern {
 
 class JInspectorNetworkReporter : public jni::HybridClass<JInspectorNetworkReporter> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/modules/network/InspectorNetworkReporter;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/modules/network/InspectorNetworkReporter;";
 
   static jboolean isDebuggingEnabled(jni::alias_ref<jclass> /*unused*/);
 

@@ -160,7 +160,7 @@ auto createJavaRejectCallback(
 
 struct JPromiseImpl : public jni::JavaClass<JPromiseImpl> {
   constexpr static auto kJavaDescriptor =
-      "Lcom/facebook/react/bridge/PromiseImpl;";
+      "Lcom/react/react/bridge/PromiseImpl;";
 
   static jni::local_ref<javaobject> create(
       jni::local_ref<JCallback::javaobject> resolve,
@@ -365,7 +365,7 @@ JNIArgs convertJSIArgsToJNIArgs(
     }
 
     // Dynamic encapsulates the Null type so we don't want to return null here.
-    if ((arg->isNull() && type != "Lcom/facebook/react/bridge/Dynamic;") ||
+    if ((arg->isNull() && type != "Lcom/react/react/bridge/Dynamic;") ||
         arg->isUndefined()) {
       jarg->l = nullptr;
     } else if (type == "Ljava/lang/Double;") {
@@ -404,7 +404,7 @@ JNIArgs convertJSIArgsToJNIArgs(
       }
       jarg->l = makeGlobalIfNecessary(
           env->NewStringUTF(arg->getString(rt).utf8(rt).c_str()));
-    } else if (type == "Lcom/facebook/react/bridge/Callback;") {
+    } else if (type == "Lcom/react/react/bridge/Callback;") {
       if (!(arg->isObject() && arg->getObject(rt).isFunction(rt))) {
         throw JavaTurboModuleArgumentConversionException(
             "Function", argIndex, methodName, arg, &rt);
@@ -412,7 +412,7 @@ JNIArgs convertJSIArgsToJNIArgs(
       jsi::Function fn = arg->getObject(rt).getFunction(rt);
       jarg->l = makeGlobalIfNecessary(
           createJavaCallback(rt, std::move(fn), jsInvoker).release());
-    } else if (type == "Lcom/facebook/react/bridge/ReadableArray;") {
+    } else if (type == "Lcom/react/react/bridge/ReadableArray;") {
       if (!(arg->isObject() && arg->getObject(rt).isArray(rt))) {
         throw JavaTurboModuleArgumentConversionException(
             "Array", argIndex, methodName, arg, &rt);
@@ -421,7 +421,7 @@ JNIArgs convertJSIArgsToJNIArgs(
       auto jParams =
           ReadableNativeArray::newObjectCxxArgs(std::move(dynamicFromValue));
       jarg->l = makeGlobalIfNecessary(jParams.release());
-    } else if (type == "Lcom/facebook/react/bridge/ReadableMap;") {
+    } else if (type == "Lcom/react/react/bridge/ReadableMap;") {
       if (!(arg->isObject())) {
         throw JavaTurboModuleArgumentConversionException(
             "Object", argIndex, methodName, arg, &rt);
@@ -430,7 +430,7 @@ JNIArgs convertJSIArgsToJNIArgs(
       auto jParams =
           ReadableNativeMap::createWithContents(std::move(dynamicFromValue));
       jarg->l = makeGlobalIfNecessary(jParams.release());
-    } else if (type == "Lcom/facebook/react/bridge/Dynamic;") {
+    } else if (type == "Lcom/react/react/bridge/Dynamic;") {
       auto dynamicFromValue = jsi::dynamicFromValue(rt, *arg);
       auto jParams = JDynamicNative::newObjectCxxArgs(dynamicFromValue);
       jarg->l = makeGlobalIfNecessary(jParams.release());
@@ -448,11 +448,11 @@ jsi::Value convertFromJMapToValue(JNIEnv* env, jsi::Runtime& rt, jobject arg) {
   // This could also be done purely in C++, but iterative over map methods
   // but those may end up calling reflection methods anyway
   // TODO (axe) Investigate the best way to convert Java Map to Value
-  jclass jArguments = env->FindClass("com/facebook/react/bridge/Arguments");
+  jclass jArguments = env->FindClass("com/react/react/bridge/Arguments");
   static jmethodID jMakeNativeMap = env->GetStaticMethodID(
       jArguments,
       "makeNativeMap",
-      "(Ljava/util/Map;)Lcom/facebook/react/bridge/WritableNativeMap;");
+      "(Ljava/util/Map;)Lcom/react/react/bridge/WritableNativeMap;");
   auto constants = env->CallStaticObjectMethod(jArguments, jMakeNativeMap, arg);
   auto jResult = jni::adopt_local(constants);
   auto result = jni::static_ref_cast<NativeMap::jhybridobject>(jResult);
@@ -978,7 +978,7 @@ void JavaTurboModule::configureEventEmitterCallback() {
     cachedMethodId = env->GetMethodID(
         cls,
         "setEventEmitterCallback",
-        "(Lcom/facebook/react/bridge/CxxCallbackImpl;)V");
+        "(Lcom/react/react/bridge/CxxCallbackImpl;)V");
     FACEBOOK_JNI_THROW_PENDING_EXCEPTION();
   }
 
@@ -993,7 +993,7 @@ void JavaTurboModule::configureEventEmitterCallback() {
   args[0].l = callback.release();
 
   // CallVoidMethod is replaced with CallVoidMethodA as it's unsafe on 32bit and
-  // causes crashes https://github.com/facebook/react-native/issues/51628
+  // causes crashes https://github.com/react/react-native/issues/51628
   env->CallVoidMethodA(instance_.get(), cachedMethodId, args);
   FACEBOOK_JNI_THROW_PENDING_EXCEPTION();
 }

@@ -16,7 +16,7 @@ using namespace facebook;
 namespace facebook::react {
 
 static constexpr auto kBlobModuleJavaDescriptor =
-    "com/facebook/react/modules/blob/BlobModule";
+    "com/react/react/modules/blob/BlobModule";
 
 BlobCollector::BlobCollector(
     jni::global_ref<jobject> blobModule,

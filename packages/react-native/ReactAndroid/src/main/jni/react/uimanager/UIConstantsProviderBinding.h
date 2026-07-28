@@ -16,7 +16,7 @@ namespace facebook::react {
 class DefaultEventTypesProvider : public jni::JavaClass<DefaultEventTypesProvider> {
  public:
   static constexpr const char *kJavaDescriptor =
-      "Lcom/facebook/react/uimanager/UIConstantsProviderBinding$DefaultEventTypesProvider;";
+      "Lcom/react/react/uimanager/UIConstantsProviderBinding$DefaultEventTypesProvider;";
 
   folly::dynamic getDefaultEventTypes() const
   {
@@ -29,7 +29,7 @@ class DefaultEventTypesProvider : public jni::JavaClass<DefaultEventTypesProvide
 class ConstantsForViewManagerProvider : public jni::JavaClass<ConstantsForViewManagerProvider> {
  public:
   static constexpr const char *kJavaDescriptor =
-      "Lcom/facebook/react/uimanager/UIConstantsProviderBinding$ConstantsForViewManagerProvider;";
+      "Lcom/react/react/uimanager/UIConstantsProviderBinding$ConstantsForViewManagerProvider;";
 
   folly::dynamic getConstantsForViewManager(const std::string &viewManagerName) const
   {
@@ -46,7 +46,7 @@ class ConstantsForViewManagerProvider : public jni::JavaClass<ConstantsForViewMa
 class ConstantsProvider : public jni::JavaClass<ConstantsProvider> {
  public:
   static constexpr const char *kJavaDescriptor =
-      "Lcom/facebook/react/uimanager/UIConstantsProviderBinding$ConstantsProvider;";
+      "Lcom/react/react/uimanager/UIConstantsProviderBinding$ConstantsProvider;";
 
   folly::dynamic getConstants() const
   {
@@ -57,7 +57,7 @@ class ConstantsProvider : public jni::JavaClass<ConstantsProvider> {
 
 class UIConstantsProviderBinding : public jni::JavaClass<UIConstantsProviderBinding> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/uimanager/UIConstantsProviderBinding;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/uimanager/UIConstantsProviderBinding;";
 
   static void install(
       jni::alias_ref<jclass> /* unused */,

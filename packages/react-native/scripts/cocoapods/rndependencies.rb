@@ -171,16 +171,16 @@ class ReactNativeDependenciesUtils
             ENV['ENTERPRISE_REPOSITORY'] != nil && ENV['ENTERPRISE_REPOSITORY'] != "" ?
             ENV['ENTERPRISE_REPOSITORY'] :
             "https://repo1.maven.org/maven2"
-        group = "com/facebook/react"
+        group = "com/react/react"
         # Sample url from Maven:
-        # https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/0.79.0-rc.0/react-native-artifacts-0.79.0-rc.0-reactnative-dependencies-debug.tar.gz
+        # https://repo1.maven.org/maven2/com/react/react/react-native-artifacts/0.79.0-rc.0/react-native-artifacts-0.79.0-rc.0-reactnative-dependencies-debug.tar.gz
         return "#{maven_repo_url}/#{group}/react-native-artifacts/#{version}/react-native-artifacts-#{version}-reactnative-dependencies-#{build_type.to_s}.tar.gz"
     end
 
     def self.nightly_tarball_url(version, build_type)
         artifact_coordinate = "react-native-artifacts"
         artifact_name = "reactnative-dependencies-#{build_type.to_s}.tar.gz"
-        xml_url = "https://central.sonatype.com/repository/maven-snapshots/com/facebook/react/#{artifact_coordinate}/#{version}-SNAPSHOT/maven-metadata.xml"
+        xml_url = "https://central.sonatype.com/repository/maven-snapshots/com/react/react/#{artifact_coordinate}/#{version}-SNAPSHOT/maven-metadata.xml"
 
         response = Net::HTTP.get_response(URI(xml_url))
         if response.is_a?(Net::HTTPSuccess)
@@ -189,7 +189,7 @@ class ReactNativeDependenciesUtils
           build_number = xml.elements['metadata/versioning/snapshot/buildNumber'].text
           full_version = "#{version}-#{timestamp}-#{build_number}"
 
-          final_url = "https://central.sonatype.com/repository/maven-snapshots/com/facebook/react/#{artifact_coordinate}/#{version}-SNAPSHOT/#{artifact_coordinate}-#{full_version}-#{artifact_name}"
+          final_url = "https://central.sonatype.com/repository/maven-snapshots/com/react/react/#{artifact_coordinate}/#{version}-SNAPSHOT/#{artifact_coordinate}-#{full_version}-#{artifact_name}"
           return final_url
         else
           return ""

@@ -28,7 +28,7 @@ class JReactNativeFeatureFlagsCxxInterop
     : public jni::JavaClass<JReactNativeFeatureFlagsCxxInterop> {
  public:
   constexpr static auto kJavaDescriptor =
-      "Lcom/facebook/react/internal/featureflags/ReactNativeFeatureFlagsCxxInterop;";
+      "Lcom/react/react/internal/featureflags/ReactNativeFeatureFlagsCxxInterop;";
 
   static bool commonTestFlag(
     facebook::jni::alias_ref<JReactNativeFeatureFlagsCxxInterop>);

@@ -93,7 +93,7 @@ function updateSourceFiles(
     fs.writeFile(
       path.join(
         REPO_ROOT,
-        'packages/react-native/ReactAndroid/src/main/java/com/facebook/react/modules/systeminfo/ReactNativeVersion.kt',
+        'packages/react-native/ReactAndroid/src/main/java/com/react/react/modules/systeminfo/ReactNativeVersion.kt',
       ),
       require('./templates/ReactNativeVersion.kt-template')(templateData),
     ),

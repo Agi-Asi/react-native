@@ -19,7 +19,7 @@ class BlobCollector : public jni::HybridClass<BlobCollector>, public jsi::HostOb
 
   size_t getBlobLength();
 
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/modules/blob/BlobCollector;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/modules/blob/BlobCollector;";
 
   static void
   nativeInstall(jni::alias_ref<jclass> /*unused*/, jni::alias_ref<jobject> blobModule, jlong jsContextNativePointer);

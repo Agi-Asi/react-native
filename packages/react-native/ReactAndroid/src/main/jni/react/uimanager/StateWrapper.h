@@ -13,7 +13,7 @@ namespace facebook::react {
 
 class StateWrapper : public jni::HybridClass<StateWrapper> {
  public:
-  constexpr static const char *const kJavaDescriptor = "Lcom/facebook/react/uimanager/StateWrapper;";
+  constexpr static const char *const kJavaDescriptor = "Lcom/react/react/uimanager/StateWrapper;";
 };
 
 } // namespace facebook::react

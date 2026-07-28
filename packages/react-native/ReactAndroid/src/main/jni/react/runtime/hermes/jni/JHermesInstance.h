@@ -21,7 +21,7 @@ namespace facebook::react {
 
 class JHermesInstance : public jni::HybridClass<JHermesInstance, JJSRuntimeFactory> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/runtime/hermes/HermesInstance;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/runtime/hermes/HermesInstance;";
 
   static jni::local_ref<jhybriddata> initHybrid(jni::alias_ref<jclass> /* unused */, bool allocInOldGenBeforeTTI);
 

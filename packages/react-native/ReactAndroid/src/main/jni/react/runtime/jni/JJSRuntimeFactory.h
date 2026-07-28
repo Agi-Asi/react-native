@@ -15,7 +15,7 @@ namespace facebook::react {
 
 class JJSRuntimeFactory : public jni::HybridClass<JJSRuntimeFactory>, public JSRuntimeFactory {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/runtime/JSRuntimeFactory;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/runtime/JSRuntimeFactory;";
 
  private:
   friend HybridBase;

@@ -33,7 +33,7 @@ struct [[deprecated("This API will be removed along with the legacy architecture
 
 struct [[deprecated("This API will be removed along with the legacy architecture.")]] JBaseJavaModule
     : public jni::JavaClass<JBaseJavaModule> {
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/bridge/BaseJavaModule;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/bridge/BaseJavaModule;";
 };
 
 class [[deprecated("This API will be removed along with the legacy architecture.")]] MethodInvoker {

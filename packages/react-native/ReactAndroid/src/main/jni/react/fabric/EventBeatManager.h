@@ -27,7 +27,7 @@ class EventBeatManagerObserver {
 
 class EventBeatManager : public jni::HybridClass<EventBeatManager> {
  public:
-  constexpr static const char *const kJavaDescriptor = "Lcom/facebook/react/fabric/events/EventBeatManager;";
+  constexpr static const char *const kJavaDescriptor = "Lcom/react/react/fabric/events/EventBeatManager;";
 
   static void registerNatives();
 

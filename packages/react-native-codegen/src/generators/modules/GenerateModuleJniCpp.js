@@ -278,7 +278,7 @@ function translateParamTypeToJniType(
         case 'number':
           return !isRequired ? 'Ljava/lang/Double;' : 'D';
         case 'object':
-          return 'Lcom/facebook/react/bridge/ReadableMap;';
+          return 'Lcom/react/react/bridge/ReadableMap;';
         case 'string':
           return 'Ljava/lang/String;';
         default:
@@ -296,13 +296,13 @@ function translateParamTypeToJniType(
     case 'Int32TypeAnnotation':
       return !isRequired ? 'Ljava/lang/Double;' : 'D';
     case 'GenericObjectTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/ReadableMap;';
+      return 'Lcom/react/react/bridge/ReadableMap;';
     case 'ObjectTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/ReadableMap;';
+      return 'Lcom/react/react/bridge/ReadableMap;';
     case 'ArrayTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/ReadableArray;';
+      return 'Lcom/react/react/bridge/ReadableArray;';
     case 'FunctionTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/Callback;';
+      return 'Lcom/react/react/bridge/Callback;';
     default:
       (realTypeAnnotation.type: 'MixedTypeAnnotation');
       throw new Error(
@@ -362,7 +362,7 @@ function translateReturnTypeToJniType(
         case 'number':
           return nullable ? 'Ljava/lang/Double;' : 'D';
         case 'object':
-          return 'Lcom/facebook/react/bridge/ReadableMap;';
+          return 'Lcom/react/react/bridge/ReadableMap;';
         case 'string':
           return 'Ljava/lang/String;';
         default:
@@ -380,13 +380,13 @@ function translateReturnTypeToJniType(
     case 'Int32TypeAnnotation':
       return nullable ? 'Ljava/lang/Double;' : 'D';
     case 'PromiseTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/Promise;';
+      return 'Lcom/react/react/bridge/Promise;';
     case 'GenericObjectTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/WritableMap;';
+      return 'Lcom/react/react/bridge/WritableMap;';
     case 'ObjectTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/WritableMap;';
+      return 'Lcom/react/react/bridge/WritableMap;';
     case 'ArrayTypeAnnotation':
-      return 'Lcom/facebook/react/bridge/WritableArray;';
+      return 'Lcom/react/react/bridge/WritableArray;';
     default:
       (realTypeAnnotation.type: 'MixedTypeAnnotation');
       throw new Error(

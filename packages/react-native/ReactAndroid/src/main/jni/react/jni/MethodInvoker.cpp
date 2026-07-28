@@ -34,7 +34,7 @@ using dynamic_iterator = folly::dynamic::const_iterator;
 
 struct JPromiseImpl : public JavaClass<JPromiseImpl> {
   constexpr static auto kJavaDescriptor =
-      "Lcom/facebook/react/bridge/PromiseImpl;";
+      "Lcom/react/react/bridge/PromiseImpl;";
 
   static local_ref<javaobject> create(
       local_ref<JCallback::javaobject> resolve,

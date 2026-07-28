@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class DefaultComponentsRegistry : public facebook::jni::JavaClass<DefaultComponentsRegistry> {
  public:
-  constexpr static auto kJavaDescriptor = "Lcom/facebook/react/defaults/DefaultComponentsRegistry;";
+  constexpr static auto kJavaDescriptor = "Lcom/react/react/defaults/DefaultComponentsRegistry;";
 
   static void registerNatives();
 

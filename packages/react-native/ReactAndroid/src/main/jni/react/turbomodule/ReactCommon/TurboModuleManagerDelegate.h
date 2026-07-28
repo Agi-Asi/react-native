@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class TurboModuleManagerDelegate : public jni::HybridClass<TurboModuleManagerDelegate> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/internal/turbomodule/core/TurboModuleManagerDelegate;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/internal/turbomodule/core/TurboModuleManagerDelegate;";
 
   virtual std::shared_ptr<TurboModule> getTurboModule(
       const std::string &name,

@@ -14,7 +14,7 @@ namespace facebook::react {
 
 class ComponentNameResolverBinding : public facebook::jni::JavaClass<ComponentNameResolverBinding> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/uimanager/ComponentNameResolverBinding;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/uimanager/ComponentNameResolverBinding;";
 
   static void install(
       jni::alias_ref<jclass> /* unused */,

@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class JBindingsInstaller : public jni::HybridClass<JBindingsInstaller>, public BindingsInstaller {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/runtime/BindingsInstaller;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/runtime/BindingsInstaller;";
 
   ~JBindingsInstaller() {}
 

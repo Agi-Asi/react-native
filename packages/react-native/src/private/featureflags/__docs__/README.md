@@ -215,7 +215,7 @@ to generate the files (see files ending with `-template.js` in the
 
 - [C++ TurboModule](../../../../ReactCommon/react/nativemodule/featureflags/__docs__/README.md)
 - [C++ implementation](../../../../ReactCommon/react/featureflags/__docs__/README.md)
-- [Android implementation](../../../../ReactAndroid/src/main/java/com/facebook/react/internal/featureflags/__docs__/README.md)
+- [Android implementation](../../../../ReactAndroid/src/main/java/com/react/react/internal/featureflags/__docs__/README.md)
 - [Configuration and codegen](../../../../scripts/featureflags/__docs__/README.md)
 
 ### Used by this

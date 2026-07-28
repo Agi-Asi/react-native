@@ -16,14 +16,14 @@ namespace facebook::react {
 class TracingStateCallback : public facebook::jni::JavaClass<TracingStateCallback> {
  public:
   static constexpr auto kJavaDescriptor =
-      "Lcom/facebook/react/internal/tracing/PerformanceTracer$TracingStateCallback;";
+      "Lcom/react/react/internal/tracing/PerformanceTracer$TracingStateCallback;";
 
   void onTracingStateChanged(bool isTracing) const;
 };
 
 class PerformanceTracerCxxInterop : public facebook::jni::JavaClass<PerformanceTracerCxxInterop> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/internal/tracing/PerformanceTracer;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/internal/tracing/PerformanceTracer;";
 
   static void reportMark(
       facebook::jni::alias_ref<PerformanceTracerCxxInterop> jthis,

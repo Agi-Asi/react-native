@@ -17,7 +17,7 @@ namespace facebook::react {
 
 class InspectorNetworkRequestListener : public jni::HybridClass<InspectorNetworkRequestListener> {
  public:
-  static constexpr auto kJavaDescriptor = "Lcom/facebook/react/devsupport/inspector/InspectorNetworkRequestListener;";
+  static constexpr auto kJavaDescriptor = "Lcom/react/react/devsupport/inspector/InspectorNetworkRequestListener;";
 
   static void registerNatives();
 

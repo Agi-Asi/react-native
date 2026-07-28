@@ -15,7 +15,7 @@ namespace facebook::react {
 
 class NativeMethodCallInvokerHolder : public jni::HybridClass<NativeMethodCallInvokerHolder> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/turbomodule/core/NativeMethodCallInvokerHolderImpl;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/turbomodule/core/NativeMethodCallInvokerHolderImpl;";
 
   std::shared_ptr<NativeMethodCallInvoker> getNativeMethodCallInvoker()
   {

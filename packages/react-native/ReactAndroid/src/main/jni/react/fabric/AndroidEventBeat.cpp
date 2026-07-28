@@ -38,7 +38,7 @@ void AndroidEventBeat::request() const {
   if (!alreadyRequested) {
     // Notifies java side that an event will be dispatched (e.g. LayoutEvent)
     static auto onRequestEventBeat =
-        jni::findClassStatic("com/facebook/react/fabric/FabricUIManager")
+        jni::findClassStatic("com/react/react/fabric/FabricUIManager")
             ->getMethod<void()>("onRequestEventBeat");
     onRequestEventBeat(javaUIManager_);
   }

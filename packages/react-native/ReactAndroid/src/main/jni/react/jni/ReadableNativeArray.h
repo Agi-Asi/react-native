@@ -15,7 +15,7 @@
 namespace facebook::react {
 
 struct ReadableArray : jni::JavaClass<ReadableArray> {
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/bridge/ReadableArray;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/bridge/ReadableArray;";
 };
 
 class ReadableNativeArray : public jni::HybridClass<ReadableNativeArray, NativeArray> {
@@ -28,7 +28,7 @@ class ReadableNativeArray : public jni::HybridClass<ReadableNativeArray, NativeA
   }
 
  public:
-  static constexpr const char *kJavaDescriptor = "Lcom/facebook/react/bridge/ReadableNativeArray;";
+  static constexpr const char *kJavaDescriptor = "Lcom/react/react/bridge/ReadableNativeArray;";
 
   static void mapException(std::exception_ptr ex);
   static void registerNatives();

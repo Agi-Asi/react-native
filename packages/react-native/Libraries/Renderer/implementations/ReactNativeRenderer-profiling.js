@@ -9,7 +9,7 @@
  * @preventMunge
  * @generated SignedSource<<3db8390cde71bdefbc682552931ec739>>
  *
- * This file is no longer sync'd from the facebook/react repository.
+ * This file is no longer sync'd from the react/react repository.
  * The version compatibility check is removed. Use at your own risk.
  */
 

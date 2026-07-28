@@ -15,7 +15,7 @@ namespace facebook::react {
 
 class BindingsInstallerHolder : public jni::HybridClass<BindingsInstallerHolder> {
  public:
-  static auto constexpr kJavaDescriptor = "Lcom/facebook/react/turbomodule/core/interfaces/BindingsInstallerHolder;";
+  static auto constexpr kJavaDescriptor = "Lcom/react/react/turbomodule/core/interfaces/BindingsInstallerHolder;";
   using BindingsInstallFunc =
       std::function<void(jsi::Runtime &runtime, const std::shared_ptr<CallInvoker> &callInvoker)>;
 

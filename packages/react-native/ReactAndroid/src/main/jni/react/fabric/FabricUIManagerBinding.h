@@ -38,7 +38,7 @@ class FabricUIManagerBinding : public jni::HybridClass<FabricUIManagerBinding>,
                                public SchedulerDelegate,
                                public LayoutAnimationStatusDelegate {
  public:
-  constexpr static const char *const kJavaDescriptor = "Lcom/facebook/react/fabric/FabricUIManagerBinding;";
+  constexpr static const char *const kJavaDescriptor = "Lcom/react/react/fabric/FabricUIManagerBinding;";
 
   static void registerNatives();
 
