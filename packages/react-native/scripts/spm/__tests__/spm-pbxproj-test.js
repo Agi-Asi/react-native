@@ -230,6 +230,44 @@ describe('addArrayStringValues', () => {
     expect(out).toContain('"-ObjC"');
   });
 
+  it('promotes a bare "$(inherited)" scalar without emitting it twice', () => {
+    const scalar = PLAIN_PBXPROJ.replace(
+      'PRODUCT_NAME = "$(TARGET_NAME)";',
+      'OTHER_LDFLAGS = "$(inherited)"; PRODUCT_NAME = "$(TARGET_NAME)";',
+    );
+    const out = addArrayStringValues(
+      scalar,
+      targetDebugDict(scalar),
+      'OTHER_LDFLAGS',
+      ['"-ObjC"'],
+    );
+    const members = /OTHER_LDFLAGS = \(\n([\s\S]*?)\t+\);/
+      .exec(out)[1]
+      .split('\n')
+      .map(line => line.trim().replace(/,$/, ''))
+      .filter(member => member.length > 0);
+    // The scalar's value IS the seed the array is created with.
+    expect(members).toEqual(['"$(inherited)"', '"-ObjC"']);
+  });
+
+  it('promotes an empty scalar without emitting a bare `,` member', () => {
+    const scalar = PLAIN_PBXPROJ.replace(
+      'PRODUCT_NAME = "$(TARGET_NAME)";',
+      'OTHER_LDFLAGS =   ; PRODUCT_NAME = "$(TARGET_NAME)";',
+    );
+    const out = addArrayStringValues(
+      scalar,
+      targetDebugDict(scalar),
+      'OTHER_LDFLAGS',
+      ['"-ObjC"'],
+    );
+    const block = /OTHER_LDFLAGS = \(\n([\s\S]*?)\t+\);/.exec(out)[1];
+    // Asserted on the raw block: a member list filtered for emptiness (as the
+    // test above does) would hide the malformed element this guards against.
+    expect(block.split('\n').filter(line => /^\s*,$/.test(line))).toEqual([]);
+    expect(block).toContain('"-ObjC"');
+  });
+
   it('dedups by EXACT token, not substring (adds "-ObjC" even when "-ObjCFoo" is present)', () => {
     const withArray = PLAIN_PBXPROJ.replace(
       'PRODUCT_NAME = "$(TARGET_NAME)";',

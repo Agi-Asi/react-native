@@ -56,6 +56,15 @@ function buildSettingsOf(text, configUuid) {
   );
   return text.slice(open, text.indexOf('};', open));
 }
+// Derive a variant whose app-target configs already carry HEADER_SEARCH_PATHS
+// as a plain scalar (ordinary, valid pbxproj) — the state injection promotes to
+// an array.
+function withScalarHeaderSearchPaths(value) {
+  return PLAIN.replaceAll(
+    'PRODUCT_BUNDLE_IDENTIFIER = com.example.MyApp;',
+    `HEADER_SEARCH_PATHS = ${value};\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.example.MyApp;`,
+  );
+}
 
 const RN_PATH = '../node_modules/react-native';
 
@@ -288,6 +297,36 @@ describe('injectSpmIntoPbxproj — Tier 2 (build settings + phase)', () => {
     expect(syncIdx).toBeGreaterThan(-1);
     expect(syncIdx).toBeLessThan(sourcesIdx);
   });
+
+  it.each([
+    [
+      '"$(inherited)"',
+      ['"$(inherited)"', '"$(SRCROOT)/build/generated/autolinking/headers"'],
+    ],
+    [
+      '"$(inherited) $(SRCROOT)/vendor/include"',
+      [
+        '"$(inherited)"',
+        '"$(inherited) $(SRCROOT)/vendor/include"',
+        '"$(SRCROOT)/build/generated/autolinking/headers"',
+      ],
+    ],
+  ])(
+    'promotes a pre-existing HEADER_SEARCH_PATHS scalar (%s) to an array, keeping its value and one $(inherited)',
+    (scalar, expectedMembers) => {
+      const {text} = inject(withScalarHeaderSearchPaths(scalar));
+      const arrays = [
+        ...text.matchAll(/HEADER_SEARCH_PATHS = \(\n([\s\S]*?)\t+\);/g),
+      ].map(m =>
+        m[1]
+          .split('\n')
+          .map(line => line.trim().replace(/,$/, ''))
+          .filter(member => member.length > 0),
+      );
+      // Both app-target configs (Debug + Release).
+      expect(arrays).toEqual([expectedMembers, expectedMembers]);
+    },
+  );
 
   it('adds one generated embed phase immediately after Frameworks', () => {
     const {text} = inject(PLAIN);

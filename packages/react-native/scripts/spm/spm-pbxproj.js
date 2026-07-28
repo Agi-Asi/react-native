@@ -443,10 +443,14 @@ function addArrayStringValues(
       const lines = fresh.map(v => `${memberIndent}${v},\n`).join('');
       return text.slice(0, lineStart) + lines + text.slice(lineStart);
     }
-    // Existing scalar — promote to an array preserving the prior value.
+    // Existing scalar — promote to an array preserving the prior value. Skip it
+    // when it IS the `"$(inherited)"` the array is seeded with (emitted twice),
+    // or when it is empty (a bare `,` is not a valid plist element).
+    const prior = field.value.trim();
+    const carriesPrior = prior !== '' && prior !== '"$(inherited)"';
     const replacement = arrayBlock([
       '"$(inherited)"',
-      field.value.trim(),
+      ...(carriesPrior ? [prior] : []),
       ...fresh,
     ]);
     return (
@@ -501,7 +505,10 @@ function setScalarField(
 // ---------------------------------------------------------------------------
 // Surgical removal — the inverse of the additive helpers above. `deinit` uses
 // these to undo exactly what injection added, leaving every other byte (incl.
-// user edits made after injection) untouched. All are pure string transforms.
+// user edits made after injection) untouched. The exception is a scalar that
+// injection promoted to an array: reversing that rewrites the whole field (see
+// removeRecordedBuildSettings), so members added to it afterwards are lost.
+// All are pure string transforms.
 // ---------------------------------------------------------------------------
 
 /**
