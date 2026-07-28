@@ -20,6 +20,13 @@ export type PackageJson = {
   name: string,
   version: string,
   private?: boolean,
+  repository?:
+    | string
+    | {
+        type?: string,
+        url?: string,
+        ...,
+      },
   dependencies?: Record<string, string>,
   devDependencies?: Record<string, string>,
   peerDependencies?: Record<string, string>,

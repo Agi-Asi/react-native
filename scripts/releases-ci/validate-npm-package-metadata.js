@@ -41,7 +41,8 @@ function getRepositoryError(repository /*: ?Repository */) /*: ?string */ {
     repository.url == null ||
     !CANONICAL_REPOSITORY_URLS.has(repository.url)
   ) {
-    return `repository.url must point to react/react-native (received ${JSON.stringify(repository.url)})`;
+    const receivedUrl = JSON.stringify(repository.url) ?? 'undefined';
+    return `repository.url must point to react/react-native (received ${receivedUrl})`;
   }
   return null;
 }
