@@ -445,9 +445,12 @@ function addArrayStringValues(
     }
     // Existing scalar — promote to an array preserving the prior value. Skip it
     // when it IS the `"$(inherited)"` the array is seeded with (emitted twice),
-    // or when it is empty (a bare `,` is not a valid plist element).
+    // or when it is empty (a bare `,` is not a valid plist element). The seed
+    // test unquotes first: pbxproj accepts `$(inherited)` bare, and Xcode's own
+    // quoted form is the same value to the build system.
     const prior = field.value.trim();
-    const carriesPrior = prior !== '' && prior !== '"$(inherited)"';
+    const carriesPrior =
+      prior !== '' && prior.replace(/^"(.*)"$/s, '$1') !== '$(inherited)';
     const replacement = arrayBlock([
       '"$(inherited)"',
       ...(carriesPrior ? [prior] : []),
@@ -508,6 +511,8 @@ function setScalarField(
 // user edits made after injection) untouched. The exception is a scalar that
 // injection promoted to an array: reversing that rewrites the whole field (see
 // removeRecordedBuildSettings), so members added to it afterwards are lost.
+// That is not deinit-only — every re-sync reverts from the recorded baseline
+// before re-injecting, so an `spm update` discards them just the same.
 // All are pure string transforms.
 // ---------------------------------------------------------------------------
 

@@ -230,25 +230,31 @@ describe('addArrayStringValues', () => {
     expect(out).toContain('"-ObjC"');
   });
 
-  it('promotes a bare "$(inherited)" scalar without emitting it twice', () => {
-    const scalar = PLAIN_PBXPROJ.replace(
-      'PRODUCT_NAME = "$(TARGET_NAME)";',
-      'OTHER_LDFLAGS = "$(inherited)"; PRODUCT_NAME = "$(TARGET_NAME)";',
-    );
-    const out = addArrayStringValues(
-      scalar,
-      targetDebugDict(scalar),
-      'OTHER_LDFLAGS',
-      ['"-ObjC"'],
-    );
-    const members = /OTHER_LDFLAGS = \(\n([\s\S]*?)\t+\);/
-      .exec(out)[1]
-      .split('\n')
-      .map(line => line.trim().replace(/,$/, ''))
-      .filter(member => member.length > 0);
-    // The scalar's value IS the seed the array is created with.
-    expect(members).toEqual(['"$(inherited)"', '"-ObjC"']);
-  });
+  // Xcode writes the seed quoted, but the unquoted form is just as valid and
+  // appears in hand-edited projects. Both are the same value to the build
+  // system, so neither may be re-emitted alongside the seed.
+  it.each(['"$(inherited)"', '$(inherited)'])(
+    'promotes a bare %s scalar without emitting the seed twice',
+    priorValue => {
+      const scalar = PLAIN_PBXPROJ.replace(
+        'PRODUCT_NAME = "$(TARGET_NAME)";',
+        `OTHER_LDFLAGS = ${priorValue}; PRODUCT_NAME = "$(TARGET_NAME)";`,
+      );
+      const out = addArrayStringValues(
+        scalar,
+        targetDebugDict(scalar),
+        'OTHER_LDFLAGS',
+        ['"-ObjC"'],
+      );
+      const members = /OTHER_LDFLAGS = \(\n([\s\S]*?)\t+\);/
+        .exec(out)[1]
+        .split('\n')
+        .map(line => line.trim().replace(/,$/, ''))
+        .filter(member => member.length > 0);
+      // The scalar's value IS the seed the array is created with.
+      expect(members).toEqual(['"$(inherited)"', '"-ObjC"']);
+    },
+  );
 
   it('promotes an empty scalar without emitting a bare `,` member', () => {
     const scalar = PLAIN_PBXPROJ.replace(
