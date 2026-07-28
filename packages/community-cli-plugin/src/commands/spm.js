@@ -107,7 +107,7 @@ const spmCommand: Command = {
       }
     }
     const setupAppleSpm = require.resolve(
-      'react-native/scripts/setup-apple-spm',
+      'react-native/scripts/setup-apple-spm.js',
       {paths: [config.root]},
     );
     // $FlowFixMe[unsupported-syntax] dynamic require of a resolved path
