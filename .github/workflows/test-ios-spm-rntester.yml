@@ -9,9 +9,6 @@ on:
 jobs:
   test:
     runs-on: macos-15-large
-    # TODO: remove once this new lane has proven green on main. Keeps a
-    # brand-new SwiftPM build from hard-blocking unrelated iOS PRs.
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
