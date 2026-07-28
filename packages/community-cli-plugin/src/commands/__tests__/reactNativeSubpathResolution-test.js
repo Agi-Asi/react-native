@@ -8,9 +8,9 @@
  * @format
  */
 
-const {execFileSync} = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const {execFileSync} = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const COMMANDS_DIR = path.join(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '../../../../..');
@@ -29,13 +29,17 @@ const REPO_ROOT = path.resolve(__dirname, '../../../../..');
  */
 function collectReactNativeSpecifiers(): Array<{file: string, spec: string}> {
   const found = [];
-  for (const entry of fs.readdirSync(COMMANDS_DIR, {withFileTypes: true})) {
-    if (!entry.isFile() || !entry.name.endsWith('.js')) {
+  for (const name of fs.readdirSync(COMMANDS_DIR)) {
+    if (!name.endsWith('.js')) {
       continue;
     }
-    const source = fs.readFileSync(path.join(COMMANDS_DIR, entry.name), 'utf8');
+    const filePath = path.join(COMMANDS_DIR, name);
+    if (!fs.statSync(filePath).isFile()) {
+      continue;
+    }
+    const source = fs.readFileSync(filePath, 'utf8');
     for (const match of source.matchAll(/'(react-native\/[^']+)'/g)) {
-      found.push({file: entry.name, spec: match[1]});
+      found.push({file: name, spec: match[1]});
     }
   }
   return found;
