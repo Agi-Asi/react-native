@@ -62,12 +62,15 @@ jobs:
         with:
           name: ReactNativeDependenciesRelease.xcframework.tar.gz
           path: /tmp/deps-release
-      # `spm download` primes both flavor slots per call and skips any slot that
-      # already validates, so prime in two passes: the first fills both slots
-      # with the Release bits, then debug/ is dropped and re-primed from the
-      # Debug tarballs while release/ validates and is left alone. hermes-engine
-      # is fetched from Maven by the command itself.
-      - name: Prime SwiftPM artifacts (Debug + Release)
+      # The ordinary `spm download`, pointed at the XCFrameworks this run just
+      # built rather than at the published nightly (RN_CORE_TARBALL_PATH /
+      # RN_DEPS_TARBALL_PATH are overrides download-spm-artifacts.js already
+      # supports). It fills both flavor slots per call and skips any slot that
+      # already validates, so it runs twice: the first pass fills both slots
+      # from the Release tarballs, then debug/ is dropped and refilled from the
+      # Debug tarballs while release/ is left alone. hermes-engine is fetched
+      # from Maven by the command itself.
+      - name: Download XCFrameworks built in this run (Debug + Release)
         shell: bash
         working-directory: ${{ env.APP_IOS_DIR }}
         run: |
