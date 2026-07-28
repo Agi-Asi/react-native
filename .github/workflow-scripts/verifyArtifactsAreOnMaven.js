@@ -12,7 +12,7 @@ const {log, sleep} = require('./utils');
 const SLEEP_S = 60; // 1 minute
 const MAX_RETRIES = 90; // 90 attempts. Waiting between attempt: 1 min. Total time: 90 min.
 const ARTIFACT_URL =
-  'https://repo1.maven.org/maven2/com/react/react/react-native-artifacts/';
+  'https://repo1.maven.org/maven2/com/facebook/react/react-native-artifacts/';
 const ARTIFACT_NAME = 'react-native-artifacts-';
 
 async function verifyArtifactsAreOnMaven(version, retries = MAX_RETRIES) {
