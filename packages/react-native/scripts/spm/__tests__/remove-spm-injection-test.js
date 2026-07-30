@@ -47,6 +47,8 @@ const PRE_EXISTING_HEADER_SEARCH_PATHS = {
   'a bare $(inherited) scalar': '"$(inherited)"',
   'a scalar with real content': '"$(inherited) $(SRCROOT)/vendor/include"',
   'an array': '(\n\t\t\t\t"$(inherited)",\n\t\t\t)',
+  // What hand edits and other generators (XcodeGen, Tuist) write.
+  'a one-line array': '("$(inherited)", )',
 };
 
 // Seed a whole `KEY = value;` field (comments and stray whitespace included)
