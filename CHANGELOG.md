@@ -1,5 +1,112 @@
 # Changelog
 
+## v0.87.0-rc.4
+
+### Breaking
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Added
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Fail closed with an actionable error when the SwiftPM autolinking config command fails, instead of silently emitting an empty Autolinked package ([a7ba4ce522](https://github.com/react/react-native/commit/a7ba4ce5224493067a5e767008c0bc0f309932c6) by [@chrfalch](https://github.com/chrfalch))
+
+### Changed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Deprecated
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Removed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Fixed
+
+- Extensionless `react-native/scripts/*` imports are now **mandated**; explicit `.js` import specifiers are rejected. ([97727ba67f](https://github.com/react/react-native/commit/97727ba67f1a4fbf5105f18bca695e272b48b836) by [@huntie](https://github.com/huntie))
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Keep the prebuilt `Headers/` in place on a Debug/Release configuration switch so the React explicit module still resolves its module map ([df5e6f6a42](https://github.com/react/react-native/commit/df5e6f6a42eeaa431d9130aa185d0f3540aee961) by [@chrfalch](https://github.com/chrfalch))
+- Write the prebuilt module-map flag to `OTHER_CPLUSPLUSFLAGS` so C++/ObjC++ sources resolve the relocated namespaces modularly ([14fe96ab51](https://github.com/react/react-native/commit/14fe96ab51554cac899ca49c8d50629aea421d54) by [@chrfalch](https://github.com/chrfalch))
+- Prebuilt `ReactNativeHeaders.xcframework` now ships the Hermes public headers so consumers resolve `<hermes/...>` out of the box ([43b44ed7c3](https://github.com/react/react-native/commit/43b44ed7c30ebe331ba58ef841a89dcae37301d8) by [@chrfalch](https://github.com/chrfalch))
+
+### Security
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Unknown
+
+- Release 0.87.0-rc.4 ([01f752d73b](https://github.com/react/react-native/commit/01f752d73bba0e981ab645f5edd8ba0219ca1e65) by [@react-native-bot](https://github.com/react-native-bot))
+- Bump Podfile.lock ([ed8973a04e](https://github.com/react/react-native/commit/ed8973a04e36e992991397479e7cb874c882dd22) by [@react-native-bot](https://github.com/react-native-bot))
+- Release 0.87.0-rc.3 ([b67c5cf8b4](https://github.com/react/react-native/commit/b67c5cf8b46b3dc9c6a8c17d85c94b6bc7e0c198) by [@react-native-bot](https://github.com/react-native-bot))
+
+#### Android Unknown
+
+
+
+#### iOS Unknown
+
+
+
+#### Failed to parse
+
+
+
+
 ## v0.87.0-rc.3
 
 ### Breaking
