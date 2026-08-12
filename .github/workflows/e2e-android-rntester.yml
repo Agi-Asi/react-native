@@ -51,6 +51,9 @@ jobs:
         id: report-status
         if: ${{ always() && steps.run-tests.outcome == 'failure' }}
         run: echo "status=failure" >> $GITHUB_OUTPUT
+      - name: Fail if needed
+        if: ${{ inputs.fail-on-error && steps.run-tests.outcome == 'failure' }}
+        run: exit 1
 
   report:
     needs: test
@@ -66,6 +69,3 @@ jobs:
           else
             echo "status=success" >> $GITHUB_OUTPUT
           fi
-      - name: Fail if needed
-        if: ${{ inputs.fail-on-error && steps.check.outputs.status == 'failure' }}
-        run: exit 1
