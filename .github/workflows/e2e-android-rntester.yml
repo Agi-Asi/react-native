@@ -57,7 +57,14 @@ jobs:
           app-id: com.facebook.react.uiapp
           maestro-flow: ./packages/rn-tester/.maestro
           flavor: ${{ matrix.flavor }}
-          test-state-artifact-name: e2e_android_rntester_state_${{ matrix.flavor }}_x86_NewArch
+      - name: Store per-flow test state
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e_android_rntester_state_${{ matrix.flavor }}_x86_NewArch
+          overwrite: true
+          if-no-files-found: warn
+          path: /tmp/maestro-android-state/results.json
       - name: Report status
         id: report-status
         if: ${{ always() && steps.run-tests.outcome == 'failure' }}
