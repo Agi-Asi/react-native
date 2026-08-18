@@ -26,6 +26,13 @@ inputs:
     required: false
     default: x86
     description: The architecture of the emulator to run
+  test-state-path:
+    required: false
+    default: /tmp/maestro-android-state/results.json
+    description: The path used to persist per-flow test results between retries
+  test-state-artifact-name:
+    required: true
+    description: The artifact used to pass per-flow test results to retry jobs
 
 runs:
   using: composite
@@ -64,7 +71,7 @@ runs:
         cores: '4'
         disable-animations: false
         avd-name: e2e_emulator
-        script: node .github/workflow-scripts/maestro-android.js ${{ inputs.app-path }} ${{ inputs.app-id }} ${{ inputs.maestro-flow }} ${{ inputs.flavor }} ${{ inputs.working-directory }}
+        script: node .github/workflow-scripts/maestro-android.js ${{ inputs.app-path }} ${{ inputs.app-id }} ${{ inputs.maestro-flow }} ${{ inputs.flavor }} ${{ inputs.working-directory }} ${{ inputs.test-state-path }}
     - name: Normalize APP_ID
       id: normalize-app-id
       shell: bash
@@ -81,6 +88,14 @@ runs:
         path: |
           report.xml
           screen.mp4
+    - name: Store per-flow test state
+      uses: actions/upload-artifact@v6
+      if: always()
+      with:
+        name: ${{ inputs.test-state-artifact-name }}
+        overwrite: true
+        if-no-files-found: warn
+        path: ${{ inputs.test-state-path }}
     - name: Store Logs
       if: steps.run-tests.outcome == 'failure'
       uses: actions/upload-artifact@v6
