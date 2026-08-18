@@ -26,10 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup xcode
-        uses: ./.github/actions/setup-xcode
-        with:
-          xcode-version: '26.0.1'
       - name: Setup node.js
         uses: ./.github/actions/setup-node
       - name: Run yarn

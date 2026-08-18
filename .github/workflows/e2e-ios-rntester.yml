@@ -35,10 +35,6 @@ jobs:
           path: /tmp/RNTesterBuild/RNTester.app
       - name: Check downloaded folder content
         run: ls -lR /tmp/RNTesterBuild
-      - name: Setup xcode
-        uses: ./.github/actions/setup-xcode
-        with:
-          xcode-version: '26.0.1'
       - name: Run E2E Tests
         id: run-tests
         continue-on-error: true
