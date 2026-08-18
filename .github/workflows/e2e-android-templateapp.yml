@@ -83,8 +83,19 @@ jobs:
         with:
           name: e2e_android_templateapp_state_${{ matrix.flavor }}_x86_NewArch
           path: /tmp/maestro-android-state
+      - name: Check for unfinished E2E flows
+        id: test-state
+        shell: bash
+        run: |
+          SHOULD_RUN=true
+          if [[ -f /tmp/maestro-android-state/results.json ]] && \
+            jq -e '(.flows | length > 0) and all(.flows[]; .status == "passed")' /tmp/maestro-android-state/results.json > /dev/null; then
+            SHOULD_RUN=false
+          fi
+          echo "should-run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
       - name: Run E2E Tests
         id: run-tests
+        if: steps.test-state.outputs.should-run == 'true'
         continue-on-error: true
         uses: ./.github/actions/maestro-android
         timeout-minutes: 90

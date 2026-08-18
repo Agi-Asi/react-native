@@ -24,9 +24,11 @@ describe('Maestro Android runner', () => {
     temporaryDirectory = fs.mkdtempSync(
       path.join(os.tmpdir(), 'maestro-android-test-'),
     );
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     fs.rmSync(temporaryDirectory, {recursive: true, force: true});
   });
 
