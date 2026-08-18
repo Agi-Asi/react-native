@@ -1346,3 +1346,34 @@ describe('a promoted array setting the user deleted after add', () => {
     );
   });
 });
+
+// `deinit` removes appendedArrayValues before it restores promotedArrayScalars,
+// so recording a key under both happens to come out right today: the scalar
+// restore rewrites the whole value last. That makes the exclusivity below
+// invisible to a round-trip test, which is why it is asserted on the marker
+// directly — reversing those two loops would otherwise silently start removing
+// array members from an already-restored scalar.
+describe('a promoted scalar is recorded once, not twice', () => {
+  it('records promotedArrayScalars and not appendedArrayValues for the key', () => {
+    const {appRoot, xcodeprojPath, rnRoot} = scaffoldApp(
+      withHeaderSearchPaths('"$(inherited) $(SRCROOT)/vendor/include"'),
+    );
+
+    injectSpmIntoExistingXcodeproj({
+      appRoot,
+      reactNativeRoot: rnRoot,
+      xcodeprojPath,
+    });
+
+    const changes = readMarker(xcodeprojPath).buildSettingChanges;
+    expect(changes.length).toBeGreaterThan(0);
+    for (const change of changes) {
+      expect(Object.keys(change.promotedArrayScalars ?? {})).toContain(
+        'HEADER_SEARCH_PATHS',
+      );
+      expect(Object.keys(change.appendedArrayValues ?? {})).not.toContain(
+        'HEADER_SEARCH_PATHS',
+      );
+    }
+  });
+});
