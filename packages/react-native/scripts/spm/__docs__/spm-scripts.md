@@ -486,9 +486,9 @@ across apps; refresh it with `react-native spm update --download force`.
 
 ---
 
-# Reference / internals
+## Reference / internals
 
-## Pipeline
+### Pipeline
 
 `react-native spm add` and `react-native spm update` orchestrate these steps:
 
@@ -502,9 +502,9 @@ across apps; refresh it with `react-native spm update --download force`.
 | 6. Inject      | `spm/generate-spm-xcodeproj.js`          | Invariant SwiftPM products plus configuration-qualified linker settings and the embed/sign phase  |
 | Auto-sync      | `spm/sync-spm-autolinking.js`            | Re-runs invariant codegen/autolinking output only at Xcode build time                             |
 
-## Directory Layout
+### Directory Layout
 
-```
+```text
 my-app/ios/
   MyApp.xcodeproj/                 <-- committed (your project; SwiftPM injected in place, carries .spm-injected.json)
   Podfile                          <-- present until `pod deintegrate` (CocoaPods coexistence is best-effort)
@@ -535,7 +535,7 @@ my-app/ios/
       .artifact-stamp
 ```
 
-## Header Resolution
+### Header Resolution
 
 React Native uses CocoaPods-style imports (`#import <React/RCTBridge.h>`) that
 SwiftPM doesn't natively support. The prebuilt artifacts serve them through
@@ -560,7 +560,7 @@ Targets that compile against React take these as product dependencies
 the app's `ReactAppHeaders`), so all of the above resolve with zero search-path
 flags.
 
-## Auto-Sync
+### Auto-Sync
 
 Autolinking is kept up to date without manual re-runs of `react-native spm` by
 **two hooks running the same sync script**, injected by `add`/`update`:

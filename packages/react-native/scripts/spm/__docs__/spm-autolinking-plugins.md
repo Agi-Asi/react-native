@@ -117,7 +117,7 @@ module.exports = function plugin(context) {
 };
 ```
 
-#### `flavoredFrameworks` — per-configuration precompiled frameworks
+### `flavoredFrameworks` — per-configuration precompiled frameworks
 
 Each entry is
 `{id, frameworkName, linkage: 'dynamic', flavors: {debug, release}}`. Both
@@ -133,7 +133,7 @@ embed settings. They are not emitted as SwiftPM product dependencies. Adding or
 removing one requires `spm update`; the build-time `spm sync` intentionally does
 not mutate runtime framework settings.
 
-#### `watchPaths` — plugin staleness inputs
+### `watchPaths` — plugin staleness inputs
 
 `watchPaths` is an array of **absolute** paths (dirs **or** files) the Xcode
 auto-sync hooks watch to decide whether they must re-sync. RN already watches
@@ -150,7 +150,7 @@ is dropped with a warning. Absolute-only, because the generated phase tests
 these paths with no cwd context. The kept paths are folded into
 `<outputDir>/.spm-sync-watch-paths` alongside RN's own, then deduped and sorted.
 
-#### `scriptPhases` — build-time shell phases on the app target
+### `scriptPhases` — build-time shell phases on the app target
 
 SwiftPM has no equivalent of CocoaPods' `script_phase`, so a framework that must
 run a script during the app's build — `expo-constants` writing
@@ -297,7 +297,7 @@ name** across plugins.
 
 ## Lifecycle
 
-```
+```text
 react-native spm add / update ─┐
                                ├─► generate-spm-autolinking main()
 Xcode "Sync SPM Autolinking" ──┘        │
