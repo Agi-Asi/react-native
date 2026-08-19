@@ -353,6 +353,29 @@ Each entry becomes a target in `build/generated/autolinking/Package.swift`.
 Sources outside `build/generated/autolinking/` are automatically mirrored with
 file-level symlinks.
 
+## Dependencies between libraries
+
+SwiftPM has no equivalent of a podspec's `s.dependency`, so a library that needs
+another native library declares it explicitly with `spm.dependencies` in its
+**own** `react-native.config.js` — a list of npm names:
+
+```js
+// react-native-reanimated/react-native.config.js
+module.exports = {
+  dependency: {platforms: {ios: {}}},
+  spm: {dependencies: ['react-native-worklets']},
+};
+```
+
+The autolinker starts from the directly-autolinked deps, follows each one's
+`spm.dependencies` **recursively**, and dedupes the result, so a transitive
+dependency is pulled into the package graph even when the app never depends on
+it directly. Declared names are mapped to Swift target names, so the dependent
+library's target can import it.
+
+This is a **library-author** surface, like the podspec dependency it replaces —
+apps don't normally set it.
+
 ## Self-managed community packages
 
 A community library that ships its own `Package.swift` is referenced directly by
@@ -370,13 +393,24 @@ build.
 
 ## Community packages without a Package.swift
 
-If an autolinked library ships **no `Package.swift`**, the build fails with a
-clear per-dep error (`Package.swift is missing for library "<name>"`). Generate
-one from the library's podspec:
+If an autolinked library ships **no `Package.swift`**, `spm add`/`update` stops
+with a per-dep error (`Package.swift is missing for library "<name>"`) and exits
+**2** — a distinct code from a generic failure, so CI and the Xcode sync hooks
+can treat it as a hard error while staying lenient about transient sync
+failures.
+
+`add` and `update` deliberately **never** scaffold on your behalf:
+auto-scaffolding would hide a real gap in the dependency's SPM support. Generate
+the manifest from the library's podspec explicitly, then re-run setup:
 
 ```bash
 npx react-native spm scaffold      # writes Package.swift into node_modules/<dep>/
+npx react-native spm               # then inject/update as usual
 ```
+
+(`scaffold` also runs codegen and regenerates the autolinking package, but it
+does not inject into the `.xcodeproj` — so on a first-time setup you still
+follow it with `npx react-native spm`.)
 
 Because `node_modules/` isn't committed, persist it so it survives the next
 install:
@@ -440,6 +474,7 @@ across apps; refresh it with `react-native spm update --download force`.
 | `spm add` fails: "CocoaPods-integrated project"                                                                        | Re-run `spm add --deintegrate` (runs `pod deintegrate` + strips RN from the Podfile), or `pod deintegrate` yourself first.                                                                                                                                                                                                                                  |
 | `spm add` fails: "no .xcodeproj found"                                                                                 | Create an app first (`npx @react-native-community/cli init`) or make a project in Xcode, then `spm add`.                                                                                                                                                                                                                                                    |
 | `spm add` fails: "multiple .xcodeproj found"                                                                           | Pass `--xcodeproj <path>` (and `--product-name <target>` if multiple app targets).                                                                                                                                                                                                                                                                          |
+| `Package.swift is missing for library "<name>"` (exit 2)                                                               | The dep ships no SwiftPM support. `npx react-native spm scaffold`, then re-run setup; persist with `patch-package`. See [Community packages without a Package.swift](#community-packages-without-a-packageswift)                                                                                                                                            |
 | Missing headers                                                                                                        | Re-run `react-native spm`                                                                                                                                                                                                                                                                                                                                   |
 | "not contained in target"                                                                                              | Re-run setup (regenerates file-level symlinks)                                                                                                                                                                                                                                                                                                              |
 | Codegen fails                                                                                                          | Use `--skipCodegen` to iterate on other parts                                                                                                                                                                                                                                                                                                               |
