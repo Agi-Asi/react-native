@@ -2,8 +2,9 @@ appId: ${APP_ID} # iOS: com.meta.RNTester.localDevelopment | Android: com.facebo
 tags:
   - android-only
 ---
-# Android-only: alpha transparency + sRGB vs Display-P3 wide-gamut. Flaky on
-# the iOS E2E job, so guarded to Android; iOS skips this flow (empty=pass).
+# Android-only: alpha transparency + sRGB vs Display-P3 wide-gamut. Color
+# fidelity needs a screenshot, so we assert load status only. Flaky on the iOS
+# E2E job, so guarded to Android; iOS skips this flow (empty=pass).
 - runFlow:
     when:
       platform: Android
@@ -41,14 +42,6 @@ tags:
           direction: DOWN
           speed: 40
           timeout: 20000
-      # Debug builds can show LogBox notifications over the bottom of the
-      # screenshot. Release builds do not include LogBox.
-      - tapOn:
-          id: 'logbox_dismiss_button_warn'
-          optional: true
-      - tapOn:
-          id: 'logbox_dismiss_button_error'
-          optional: true
       # Change this to takeScreenshot when you want to update the screenshot
       - assertScreenshot:
           path: screenshots/image-wide-gamut-${maestro.platform}

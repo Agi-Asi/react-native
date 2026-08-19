@@ -7,14 +7,6 @@ appId: ${APP_ID} # iOS: com.meta.RNTester.localDevelopment | Android: com.facebo
     visible:
       text: 'APIs'
     timeout: 30000
-# Debug LogBox notifications overlap the bottom navigation bar. Dismiss them
-# before tapping the APIs tab; these controls are absent in release builds.
-- tapOn:
-    id: 'logbox_dismiss_button_warn'
-    optional: true
-- tapOn:
-    id: 'logbox_dismiss_button_error'
-    optional: true
 - tapOn:
     id: 'apis-tab'
 - runFlow: ./helpers/search.yml

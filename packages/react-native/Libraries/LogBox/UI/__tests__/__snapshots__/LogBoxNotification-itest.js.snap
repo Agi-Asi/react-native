@@ -83,7 +83,6 @@ exports[`LogBoxNotification should render log 1`] = `
       height="20"
       justifyContent="center"
       nativeID="logbox_dismiss_button_warn"
-      testID="logbox_dismiss_button_warn"
       width="20"
     >
       <rn-image

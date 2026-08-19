@@ -21,7 +21,6 @@ import {useState} from 'react';
 
 component LogBoxButton(
   id?: string,
-  testID?: string,
   backgroundColor: Readonly<{
     default: string,
     pressed: string,
@@ -46,7 +45,6 @@ component LogBoxButton(
     return (
       <View
         id={id}
-        testID={testID}
         style={StyleSheet.compose(
           {backgroundColor: resolvedBackgroundColor.default},
           style,
@@ -59,7 +57,6 @@ component LogBoxButton(
   return (
     <Pressable
       id={id}
-      testID={testID}
       focusable={true}
       hitSlop={hitSlop}
       onPress={onPress}
