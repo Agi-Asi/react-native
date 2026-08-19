@@ -23,6 +23,7 @@ export default function LogBoxNotificationDismissButton(props: {
     <View style={styles.container}>
       <LogBoxButton
         id={props.id}
+        testID={props.id}
         backgroundColor={{
           default: LogBoxStyle.getTextColor(0.3),
           pressed: LogBoxStyle.getTextColor(0.5),
