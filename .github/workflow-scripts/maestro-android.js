@@ -26,6 +26,7 @@ node maestro-android.js <path to app> <app_id> <maestro_flow> <flavor> <working_
 
 const DEFAULT_STATE_PATH = '/tmp/maestro-android-state/results.json';
 const MAESTRO_LOG_DIRECTORY = '/tmp/MaestroLogs';
+const DIAGNOSTIC_COMMAND_TIMEOUT = 15000;
 const STATE_VERSION = 1;
 
 function collectFlows(flowPath) {
@@ -102,7 +103,7 @@ function captureFailureArtifacts(flow) {
     const screenshot = childProcess.execFileSync(
       'adb',
       ['exec-out', 'screencap', '-p'],
-      {maxBuffer: 20 * 1024 * 1024},
+      {maxBuffer: 20 * 1024 * 1024, timeout: DIAGNOSTIC_COMMAND_TIMEOUT},
     );
     fs.writeFileSync(
       path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-failure.png`),
@@ -116,12 +117,12 @@ function captureFailureArtifacts(flow) {
     childProcess.execFileSync(
       'adb',
       ['shell', 'uiautomator', 'dump', '/sdcard/window.xml'],
-      {stdio: 'ignore'},
+      {stdio: 'ignore', timeout: DIAGNOSTIC_COMMAND_TIMEOUT},
     );
     const hierarchy = childProcess.execFileSync(
       'adb',
       ['exec-out', 'cat', '/sdcard/window.xml'],
-      {maxBuffer: 20 * 1024 * 1024},
+      {maxBuffer: 20 * 1024 * 1024, timeout: DIAGNOSTIC_COMMAND_TIMEOUT},
     );
     fs.writeFileSync(
       path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-failure.xml`),
@@ -135,7 +136,7 @@ function captureFailureArtifacts(flow) {
     const logcat = childProcess.execFileSync(
       'adb',
       ['logcat', '-d', '-v', 'threadtime'],
-      {maxBuffer: 50 * 1024 * 1024},
+      {maxBuffer: 50 * 1024 * 1024, timeout: DIAGNOSTIC_COMMAND_TIMEOUT},
     );
     fs.writeFileSync(
       path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-logcat.txt`),
