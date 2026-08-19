@@ -25,8 +25,8 @@ npx react-native spm add --deintegrate
 open MyApp.xcodeproj
 ```
 
-After the initial run, the project carries **auto-sync hooks** that detects
-dependency changes and re-runs autolinking before compilation (see
+After the initial run, the project carries **auto-sync hooks** that detect
+dependency changes and re-run autolinking before compilation (see
 [Auto-Sync](#auto-sync)) — you don't re-invoke `react-native spm` manually for
 day-to-day dependency changes. **On a fresh clone or CI checkout, run
 `npx react-native spm` once before building** (see
@@ -115,7 +115,7 @@ command auto-redirects into `ios/` with a banner.
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `add`                 | Inject SwiftPM packages (package refs, build settings, the Sync build phase) into the existing `.xcodeproj`, in place. Idempotent. Default on first run. `--deintegrate` first runs `pod deintegrate` + strips React Native from the Podfile. |
 | `update`              | Re-run the pipeline and refresh the existing injection. Default once a project is injected.                                                                                                                                                   |
-| `deinit`              | The exact inverse of `add`: surgically remove only what `add` injected (recorded in `.spm-injected.json`) and drop the marker. Git-recoverable; no prompt.                                                                                    |
+| `deinit`              | The inverse of `add`: surgically remove only what `add` injected (recorded in `.spm-injected.json`) and drop the marker. Git-recoverable; no prompt. Three things it does not undo — see [Files the tool touches](#files-the-tool-touches).   |
 | `scaffold`            | Generate `Package.swift` into `node_modules/<dep>/` for community RN libraries that ship only a podspec.                                                                                                                                      |
 | `sync` (advanced)     | Lightweight resync invoked by the Xcode auto-sync hooks. Regenerates invariant codegen and autolinking output only. Not for humans.                                                                                                           |
 | `codegen` (advanced)  | Run codegen and install the SwiftPM codegen template only.                                                                                                                                                                                    |
@@ -216,24 +216,53 @@ load from Metro instead of a bundled `main.jsbundle`. CocoaPods injects it at
 `pod install` time, so this keeps SwiftPM apps at parity. An existing value is
 left alone.
 
-## What to commit
+## Files the tool touches
 
-| Path                                 | Commit? | Why                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MyApp.xcodeproj/`                   | Yes     | Your project, with SwiftPM injected in place. Holds your signing, capabilities, Build Phases — `add` only adds SwiftPM refs/settings, additively.                                                                                                                                                                                                                                                                             |
-| `MyApp.xcodeproj/.spm-injected.json` | Yes     | Marker recording every edit `add` made — plus the pre-injection value of any build setting it rewrote — so `deinit` can surgically reverse it and re-runs stay idempotent. Also pins settings later runs and Xcode builds must reuse: the `--version` pin (`artifactsVersionOverride`) that keeps later runs on the same artifact slots, and the [autolinking config command](#the-autolinking-config-command-is-remembered). |
-| `build/generated/`                   | No      | Codegen/autolinking output; regenerated                                                                                                                                                                                                                                                                                                                                                                                       |
-| `build/xcframeworks/`                | No      | Symlinks to the machine-local artifact cache                                                                                                                                                                                                                                                                                                                                                                                  |
-| `Package.resolved`                   | No      | SwiftPM resolution file; machine-specific                                                                                                                                                                                                                                                                                                                                                                                     |
+Paths are relative to the Xcode project directory (`ios/`) unless noted.
 
-Injection is **purely additive** and **idempotent**: `add`/`update` insert only
-SwiftPM package refs, the React build settings, the Sync build phase, and a
-scheme pre-action — every other byte (your signing / capabilities / Build
-Phases) stays untouched, and a re-run is a no-op. The injected refs point at
-three stable sub-package paths under `build/`; adding or removing community deps
-changes the sub-package contents (gitignored) and never re-injects. `deinit`
-removes exactly what was injected (using the marker), leaving the project
-byte-identical to its pre-`add` state — with one exception, described next.
+### In your repo — committed
+
+| Path                                                | Written by          | What happens                                                                                                                                                                                                                                                           | Undone by `deinit`?                                                                        |
+| --------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `MyApp.xcodeproj/project.pbxproj`                   | `add`, `update`     | SwiftPM package refs, the React build settings, the Sync build phase, and the flavored-framework embed phase are added. Purely additive; a re-run is a no-op.                                                                                                          | Yes — exactly what was injected, per the marker (one exception below)                      |
+| `MyApp.xcodeproj/.spm-injected.json`                | `add`, `update`     | Created. Two roles: it records every edit made — including the pre-injection value of any build setting rewritten — so removal is surgical and re-runs stay idempotent; and it **pins configuration** later runs and Xcode builds must reuse (see the two pins below). | Yes — deleted, and the pins go with it                                                     |
+| `MyApp.xcodeproj/xcshareddata/xcschemes/*.xcscheme` | `add`, `update`     | The sync pre-action is added to the scheme that builds your target; a shared scheme is created if there is none. Commit this or teammates lose the pre-action.                                                                                                         | Yes — the scheme is deleted if `add` created it, otherwise only the pre-action is stripped |
+| `.gitignore`                                        | `add` only          | Created if absent, else appended: a `# SPM – auto-generated at build time` block adding `Package.resolved`, `build/generated/`, `build/xcframeworks/`, `.build/`.                                                                                                      | **No** — the block is left behind                                                          |
+| `Podfile`                                           | `add --deintegrate` | Only the React Native directives (`use_react_native!`, `use_native_modules!`, `prepare_react_native_project!`) are stripped. Your own `pod '…'` lines are preserved.                                                                                                   | **No** — re-add the directives yourself to go back to CocoaPods                            |
+| `Pods/`, `Pods-*.xcconfig`, `[CP]` phases           | `add --deintegrate` | Removed by `pod deintegrate`. The `.xcworkspace` referencing them is left on disk.                                                                                                                                                                                     | **No** — run `pod install` to restore                                                      |
+
+The two pinned settings are the `--version` pin (`artifactsVersionOverride`, see
+[Pinning the React Native version](#pinning-the-react-native-version)) and the
+[autolinking config command](#the-autolinking-config-command-is-remembered).
+Because `deinit` drops the marker, it drops both.
+
+### In your repo — generated, gitignored
+
+| Path                           | Written by                          | Contents                                                                                                                                                                                  |
+| ------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `build/generated/ios/`         | `add`, `update`, `sync`, `codegen`  | Codegen output plus the SwiftPM codegen manifest (the `React-GeneratedCode` package).                                                                                                     |
+| `build/generated/autolinking/` | `add`, `update`, `sync`             | `Package.swift`, `autolinking.json`, `packages/`, `libs/`, `headers/`, the `.spm-sync-stamp`, `.spm-sync-watch-paths`, and any `.spm-plugin-*.json` plugin manifests.                     |
+| `build/xcframeworks/`          | `add`, `update`, `sync`, `download` | The `debug/` and `release/` flavor slots (symlinks into the cache), `ReactHeadersTarget/`, the headers-only xcframeworks, `Package.swift`, `flavored-frameworks.json`, `.artifact-stamp`. |
+| `.build/`, `Package.resolved`  | Xcode / SwiftPM                     | SwiftPM's own build directory and resolution file. Machine-specific.                                                                                                                      |
+
+`deinit` leaves all of the above in place — it is regenerable, and removing it
+is `rm -rf build/ .build/` (see [Removing / resetting](#removing--resetting)).
+
+### Outside your repo
+
+| Path                                                             | Written by                          | Notes                                                                                                                                                                                        |
+| ---------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node_modules/<dep>/Package.swift`                               | `scaffold`                          | A generated manifest for a dep that ships none. Not committed — persist with `patch-package` (see [Community packages without a Package.swift](#community-packages-without-a-packageswift)). |
+| `~/Library/Caches/ReactNative/spm-artifacts/<version>/<flavor>/` | `add`, `update`, `sync`, `download` | The immutable artifact slots the `build/xcframeworks/` symlinks point at. Shared across apps on the machine.                                                                                 |
+| `~/Library/Caches/ReactNative/`                                  | `download`                          | Downloaded tarballs, shared with CocoaPods. `RCT_SKIP_CACHES=1` bypasses the cache.                                                                                                          |
+
+Injection is **purely additive** and **idempotent**: every other byte of your
+project — signing, capabilities, your own Build Phases — stays untouched, and a
+re-run is a no-op. The injected refs point at three stable sub-package paths
+under `build/`, so adding or removing community deps changes the sub-package
+contents (gitignored) and never re-injects. `deinit` removes exactly what was
+injected, leaving the project byte-identical to its pre-`add` state — with the
+exceptions called out above, and one more described next.
 
 **Build settings that already exist** are edited in place. The four array
 settings `add` merges into — `HEADER_SEARCH_PATHS`, `OTHER_LDFLAGS`,
@@ -248,9 +277,6 @@ marker and `deinit` restores it by rewriting the whole field — once folded
 together, the injected members and your own are indistinguishable — so **members
 you add to a promoted array by hand afterwards are lost**. That applies to
 `update` too, which reverts to the recorded baseline before re-injecting.
-
-Because everything under `build/` is gitignored, a clean checkout has no
-resolvable Swift packages until they are regenerated — see the next section.
 
 ## Fresh clones & CI
 
