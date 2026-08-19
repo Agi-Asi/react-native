@@ -86,9 +86,10 @@ runs:
           report.xml
           screen.mp4
     - name: Store Logs
-      if: steps.run-tests.outcome == 'failure'
+      if: always()
       uses: actions/upload-artifact@v6
       with:
         name: maestro-logs-android-${{ steps.normalize-app-id.outputs.app-id }}-${{ inputs.flavor }}-${{ inputs.emulator-arch }}-NewArch
         overwrite: true
+        if-no-files-found: ignore
         path: /tmp/MaestroLogs

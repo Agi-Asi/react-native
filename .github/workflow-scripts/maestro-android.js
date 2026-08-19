@@ -25,6 +25,7 @@ node maestro-android.js <path to app> <app_id> <maestro_flow> <flavor> <working_
 `;
 
 const DEFAULT_STATE_PATH = '/tmp/maestro-android-state/results.json';
+const MAESTRO_LOG_DIRECTORY = '/tmp/MaestroLogs';
 const STATE_VERSION = 1;
 
 function collectFlows(flowPath) {
@@ -82,10 +83,94 @@ function saveState(statePath, state) {
 function runMaestroFlow(flow, appId) {
   console.info(`Executing flow: ${flow}`);
   const timeout = 1000 * 60 * 10; // 10 minutes
-  childProcess.execSync(
-    `MAESTRO_DRIVER_STARTUP_TIMEOUT=120000 $HOME/.maestro/bin/maestro test "${flow}" --format junit -e APP_ID="${appId}" --debug-output /tmp/MaestroLogs`,
-    {stdio: 'inherit', timeout},
-  );
+  try {
+    childProcess.execSync(
+      `MAESTRO_DRIVER_STARTUP_TIMEOUT=120000 $HOME/.maestro/bin/maestro test "${flow}" --format junit -e APP_ID="${appId}" --debug-output ${MAESTRO_LOG_DIRECTORY}`,
+      {stdio: 'inherit', timeout},
+    );
+  } catch (error) {
+    captureFailureArtifacts(flow);
+    throw error;
+  }
+}
+
+function captureFailureArtifacts(flow) {
+  fs.mkdirSync(MAESTRO_LOG_DIRECTORY, {recursive: true});
+  const artifactName = path.basename(flow, path.extname(flow));
+
+  try {
+    const screenshot = childProcess.execFileSync(
+      'adb',
+      ['exec-out', 'screencap', '-p'],
+      {maxBuffer: 20 * 1024 * 1024},
+    );
+    fs.writeFileSync(
+      path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-failure.png`),
+      screenshot,
+    );
+  } catch (error) {
+    console.error(`Failed to capture screenshot for ${flow}: ${error}`);
+  }
+
+  try {
+    childProcess.execFileSync(
+      'adb',
+      ['shell', 'uiautomator', 'dump', '/sdcard/window.xml'],
+      {stdio: 'ignore'},
+    );
+    const hierarchy = childProcess.execFileSync(
+      'adb',
+      ['exec-out', 'cat', '/sdcard/window.xml'],
+      {maxBuffer: 20 * 1024 * 1024},
+    );
+    fs.writeFileSync(
+      path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-failure.xml`),
+      hierarchy,
+    );
+  } catch (error) {
+    console.error(`Failed to capture UI hierarchy for ${flow}: ${error}`);
+  }
+
+  try {
+    const logcat = childProcess.execFileSync(
+      'adb',
+      ['logcat', '-d', '-v', 'threadtime'],
+      {maxBuffer: 50 * 1024 * 1024},
+    );
+    fs.writeFileSync(
+      path.join(MAESTRO_LOG_DIRECTORY, `${artifactName}-logcat.txt`),
+      logcat,
+    );
+  } catch (error) {
+    console.error(`Failed to capture logcat for ${flow}: ${error}`);
+  }
+}
+
+async function stopScreenRecording(screenrecordProcess) {
+  try {
+    childProcess.execFileSync('adb', ['shell', 'pkill', '-2', 'screenrecord'], {
+      stdio: 'ignore',
+    });
+  } catch {
+    screenrecordProcess.kill('SIGINT');
+  }
+
+  if (
+    screenrecordProcess.exitCode == null &&
+    screenrecordProcess.signalCode == null
+  ) {
+    await Promise.race([
+      new Promise(resolve => screenrecordProcess.once('close', resolve)),
+      sleep(5000),
+    ]);
+  }
+
+  if (
+    screenrecordProcess.exitCode == null &&
+    screenrecordProcess.signalCode == null
+  ) {
+    screenrecordProcess.kill('SIGKILL');
+  }
 }
 
 function formatResults(flowKeys, state) {
@@ -199,11 +284,17 @@ async function main(args = process.argv.slice(2)) {
   let metroProcess = null;
   if (isDebug) {
     console.info('Start Metro');
+    fs.mkdirSync(MAESTRO_LOG_DIRECTORY, {recursive: true});
+    const metroLog = fs.openSync(
+      path.join(MAESTRO_LOG_DIRECTORY, 'metro.log'),
+      'a',
+    );
     metroProcess = childProcess.spawn('yarn', ['start'], {
       cwd: workingDirectory,
-      stdio: 'ignore',
+      stdio: ['ignore', metroLog, metroLog],
       detached: true,
     });
+    fs.closeSync(metroLog);
     metroProcess.unref();
     console.info(`- Metro PID: ${metroProcess.pid}`);
 
@@ -220,12 +311,11 @@ async function main(args = process.argv.slice(2)) {
   }
 
   console.info('Start recording to /sdcard/screen.mp4');
-  childProcess
-    .exec('adb shell screenrecord /sdcard/screen.mp4', {
-      stdio: 'ignore',
-      detached: true,
-    })
-    .unref();
+  const screenrecordProcess = childProcess.spawn(
+    'adb',
+    ['shell', 'screenrecord', '/sdcard/screen.mp4'],
+    {stdio: 'ignore'},
+  );
 
   let error = null;
   try {
@@ -237,6 +327,7 @@ async function main(args = process.argv.slice(2)) {
     error = caughtError;
   } finally {
     console.info('Stop recording');
+    await stopScreenRecording(screenrecordProcess);
     childProcess.execSync('adb pull /sdcard/screen.mp4', {stdio: 'ignore'});
 
     if (isDebug && metroProcess != null) {
