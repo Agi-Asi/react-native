@@ -18,10 +18,9 @@ The documented extension points don't cover a framework:
   Swift/ObjC/C++ modules (e.g. `ExpoModulesCore`) that `spm scaffold` can't
   handle.
 - A one-shot **post-process** of the generated `Package.swift` is **clobbered on
-  the next sync**: the Xcode
-  [auto-sync build phase](./spm-scripts.md#auto-sync-build-phase) re-runs
-  autolinking on every dependency change. A framework's contribution must run
-  _whenever autolinking runs_.
+  the next sync**: the Xcode [auto-sync hooks](./spm-scripts.md#auto-sync)
+  re-run autolinking on every dependency change. A framework's contribution must
+  run _whenever autolinking runs_.
 
 A plugin is exactly that. It is invoked from `generate-spm-autolinking.js`'s
 `main()` — the single function that both `add` / `update` **and** the build-time
@@ -137,9 +136,9 @@ not mutate runtime framework settings.
 #### `watchPaths` — plugin staleness inputs
 
 `watchPaths` is an array of **absolute** paths (dirs **or** files) the Xcode
-auto-sync build phase watches to decide whether it must re-sync. RN already
-watches each module's source dir plus every npm dep's checked-in `Package.swift`
-and `.react-native/` dir; a plugin adds the inputs only it knows about — e.g.
+auto-sync hooks watch to decide whether they must re-sync. RN already watches
+each module's source dir plus every npm dep's checked-in `Package.swift` and
+`.react-native/` dir; a plugin adds the inputs only it knows about — e.g.
 `packages/expo/Package.swift`, `expo-module.config.json`, and per-module
 manifests. On the next build the phase re-syncs when a watched **file** is newer
 than the last sync, a watched **dir** has a newer child, or a watched path has

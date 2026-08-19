@@ -25,11 +25,11 @@ npx react-native spm add --deintegrate
 open MyApp.xcodeproj
 ```
 
-After the initial run, the `.xcodeproj` includes an **auto-sync build phase**
-that detects dependency changes and re-runs autolinking before compilation (see
-[Auto-Sync](#auto-sync-build-phase)) — you don't re-invoke `react-native spm`
-manually for day-to-day dependency changes. **On a fresh clone or CI checkout,
-run `npx react-native spm` once before building** (see
+After the initial run, the project carries **auto-sync hooks** that detects
+dependency changes and re-runs autolinking before compilation (see
+[Auto-Sync](#auto-sync)) — you don't re-invoke `react-native spm` manually for
+day-to-day dependency changes. **On a fresh clone or CI checkout, run
+`npx react-native spm` once before building** (see
 [Fresh clones & CI](#fresh-clones--ci)).
 
 > **Note:** `react-native spm` is a thin wrapper over
@@ -117,7 +117,7 @@ command auto-redirects into `ios/` with a banner.
 | `update`              | Re-run the pipeline and refresh the existing injection. Default once a project is injected.                                                                                                                                                   |
 | `deinit`              | The exact inverse of `add`: surgically remove only what `add` injected (recorded in `.spm-injected.json`) and drop the marker. Git-recoverable; no prompt.                                                                                    |
 | `scaffold`            | Generate `Package.swift` into `node_modules/<dep>/` for community RN libraries that ship only a podspec.                                                                                                                                      |
-| `sync` (advanced)     | Lightweight resync invoked by the Xcode auto-sync build phase. Regenerates invariant codegen and autolinking output only. Not for humans.                                                                                                     |
+| `sync` (advanced)     | Lightweight resync invoked by the Xcode auto-sync hooks. Regenerates invariant codegen and autolinking output only. Not for humans.                                                                                                           |
 | `codegen` (advanced)  | Run codegen and install the SwiftPM codegen template only.                                                                                                                                                                                    |
 | `download` (advanced) | Download/check xcframework artifacts only.                                                                                                                                                                                                    |
 
@@ -193,7 +193,7 @@ marker still advertises the pinned version.
 ### Debug/Release flavor is automatic
 
 React Native ships **flavored** prebuilt binaries: the _debug_ `React.framework`
-(and `hermesvm` / `ReactNativeDependencies`) carry the dev experience — dev
+(and `hermes-engine` / `ReactNativeDependencies`) carry the dev experience — dev
 menu, assertions, `RN_DEBUG_STRING_CONVERTIBLE` — while _release_ strips them
 for production. A Debug build must embed the debug binaries and a
 Release/archive the release ones.
@@ -254,13 +254,21 @@ resolvable Swift packages until they are regenerated — see the next section.
 
 ## Fresh clones & CI
 
-Xcode resolves the Swift package graph **before any build phase runs**, so on a
-clean checkout (where the gitignored `build/` packages don't exist yet) the
-auto-sync build phase can't regenerate them in time — a bare `xcodebuild` fails
-at _"Resolve Package Graph … build/generated/autolinking doesn't exist"_.
+Everything under `build/` is gitignored, so a clean checkout has no resolvable
+Swift packages until they are regenerated. Xcode resolves the package graph
+before build phases **and** before scheme pre-actions, so neither
+[auto-sync hook](#auto-sync) can rescue this: with `build/generated/autolinking`
+missing, the build stops at _"Resolve Package Graph … doesn't exist"_ having run
+neither hook.
 
-Run the setup command once after cloning, before building — the SwiftPM analog
-of `pod install`:
+Verified on Xcode 26.6 against a freshly-injected app with `build/` deleted:
+`xcodebuild -scheme … build` fails in nine lines of log, with
+`Resolve Package Graph` as the first step and no trace of the pre-action;
+`xcodebuild -resolvePackageDependencies` fails identically. Opening the project
+in Xcode also resolves the graph on load, before you press Build.
+
+So run the setup command once after cloning, before building — the SwiftPM
+analog of `pod install`:
 
 ```bash
 npx react-native spm      # downloads artifacts (if missing) + regenerates build/
@@ -270,7 +278,7 @@ On an already-injected project this routes to `update`: it fetches the
 xcframework artifacts into the shared cache if they aren't present and
 regenerates `build/xcframeworks` + `build/generated`. After this first run,
 incremental dependency changes are picked up automatically by the auto-sync
-build phase.
+hooks.
 
 **Automate it** so nobody has to remember — add a `postinstall` hook, which runs
 as part of the `npm install` / `yarn install` your CI already does before
@@ -491,16 +499,23 @@ Targets that compile against React take these as product dependencies
 the app's `ReactAppHeaders`), so all of the above resolve with zero search-path
 flags.
 
-## Auto-Sync Build Phase
+## Auto-Sync
 
-The generated `.xcodeproj` includes a **Sync SPM Autolinking** shell script
-build phase. It keeps `build/generated/autolinking/Package.swift` up to date
-without requiring manual re-runs of `react-native spm` for incremental
-dependency changes. (It cannot bootstrap a fresh clone — Xcode resolves the
-package graph before any phase runs; see
-[Fresh clones & CI](#fresh-clones--ci).)
+Autolinking is kept up to date without manual re-runs of `react-native spm` by
+**two hooks running the same sync script**, injected by `add`/`update`:
 
-**How it works:**
+| Hook                               | Where                                                                                       | Role                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Scheme pre-action                  | The app's **shared** scheme (`xcshareddata/xcschemes/`), under `BuildAction` → `PreActions` | Fires earlier in the build than a build phase can, so it is the one that normally does the re-sync. |
+| `Sync SPM Autolinking` build phase | `.xcodeproj`, prepended before `Sources`                                                    | **Safety net** for builds that bypass the scheme (and for a scheme whose pre-action was stripped).  |
+
+Neither hook can bootstrap a clean checkout. Xcode resolves the Swift package
+graph before build phases **and** before scheme pre-actions, so if the generated
+packages are missing entirely, resolution fails and the build stops before
+either hook runs — see [Fresh clones & CI](#fresh-clones--ci). The hooks keep an
+_existing_ set of generated packages current; they do not create the first one.
+
+**How the sync script works:**
 
 1. Compares timestamps of staleness inputs against
    `build/generated/autolinking/.spm-sync-stamp`:
@@ -510,23 +525,46 @@ package graph before any phase runs; see
      yarn, pnpm, bun); also checks parent `node_modules` for monorepo setups
    - a missing `build/xcframeworks/` (e.g. after a manual clean) also marks
      stale
+   - every path in `.spm-sync-watch-paths` — RN's own inputs plus any
+     [plugin](./spm-autolinking-plugins.md#watchpaths--plugin-staleness-inputs)
+     `watchPaths`; a watched file that is newer, a watched dir with a newer
+     child, or a watched path that has **vanished** all mark stale
 2. If any input is newer (or the stamp is missing): runs
    `npx react-native spm sync`, which re-executes autolinking + package
    generation (downloading artifacts if the cache slot is incomplete) and writes
    the stamp file.
 3. If all inputs are fresh: exits immediately (~1ms).
 
-**Build phase ordering:**
+**Ordering.** As observed in an `xcodebuild -scheme … build` log on Xcode 26.6:
 
-| #   | Phase                                                        |
-| --- | ------------------------------------------------------------ |
-| 0   | Resolve Package Graph (Xcode — runs before all build phases) |
-| 1   | Sync SPM Autolinking                                         |
-| 2   | Sources (compile)                                            |
-| 3   | Frameworks (link)                                            |
-| 4   | Embed React Native Flavored Frameworks                       |
-| 5   | Resources (copy)                                             |
-| 6   | Build JS Bundle                                              |
+| Step                                            | Owner             |
+| ----------------------------------------------- | ----------------- |
+| Resolve Package Graph                           | Xcode             |
+| **Sync SPM Autolinking**                        | scheme pre-action |
+| Prepare packages / ComputeTargetDependencyGraph | Xcode             |
+| CreateBuildDescription                          | Xcode             |
+| **Sync SPM Autolinking** (safety net)           | build phase 1     |
+| Sources (compile)                               | build phase 2     |
+| Frameworks (link)                               | build phase 3     |
+| Embed React Native Flavored Frameworks          | build phase 4     |
+| Resources (copy)                                | build phase 5     |
+| Build JS Bundle                                 | build phase 6     |
 
-Failures in the sync phase are non-fatal — it emits a `warning:` and exits 0, so
-an already-generated package graph can still produce a successful build.
+Resolution coming first is what makes the one-time setup run necessary on a
+clean checkout; it is not something either hook can work around.
+
+A sync failure is lenient by default but **not unconditionally**. The generated
+script branches on the exit code:
+
+- **Exit 2** — an autolinked dependency ships no `Package.swift`. This **fails
+  the build** (`exit 1`), deliberately: the autolinker has already printed an
+  `error:` line per dep, and the fix needs a terminal (see
+  [Community packages without a Package.swift](#community-packages-without-a-packageswift)).
+- **Any other non-zero exit** — emits
+  `warning: SPM sync failed — build may use stale codegen/autolinking` and lets
+  the build continue, so an already-generated package graph can still produce a
+  successful build.
+
+That split is the whole reason the missing-manifest case has its own exit code:
+a transient sync hiccup should not break a build that could still succeed, while
+a genuinely missing manifest should not pass silently.
