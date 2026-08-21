@@ -232,7 +232,6 @@ function readAutolinkingJson(
  *         name: "MyNativeModule",
  *         path: "ios/MyNativeModule",            // relative to appRoot
  *         exclude: ["*.js", "*.podspec"],        // optional
- *         publicHeadersPath: ".",                // optional
  *       }
  *     ]
  *   }
@@ -1334,7 +1333,9 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
         name: mod.name,
         path: relPath,
         exclude: mod.exclude ?? [],
-        publicHeadersPath: mod.publicHeadersPath ?? null,
+        // The synth wrapper owns the module's public interface: it declares
+        // publicHeadersPath: "include", a symlink to the module's header tree.
+        publicHeadersPath: null,
         sources: userSources,
       },
       origin: 'spmModule',
