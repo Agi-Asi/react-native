@@ -1,115 +1,5 @@
 # Changelog
 
-## v0.86.3
-
-### Breaking
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Added
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Changed
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Deprecated
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Removed
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Fixed
-
-
-
-#### Android specific
-
-- Fix ConcurrentModificationException when getInitialURL re-enters during onHostResume ([20d04aefa1](https://github.com/react/react-native/commit/20d04aefa17acbbbf89ff055adf798827bd7787b) by [@nickcernera](https://github.com/nickcernera))
-
-#### iOS specific
-
-- Custom fonts with an explicit fontWeight no longer render at the heaviest weight on the New Architecture ([918fb15bfe](https://github.com/react/react-native/commit/918fb15bfe5ff434d036c91be957de62cf8f8449) by [@jensdev](https://github.com/jensdev))
-
-### Security
-
-
-
-#### Android specific
-
-
-
-#### iOS specific
-
-
-
-### Unknown
-
-- Release 0.86.3 ([95cffbff2e](https://github.com/react/react-native/commit/95cffbff2e071e278987c7d7cd51fbc970dd5622) by [@react-native-bot](https://github.com/react-native-bot))
-- Release 0.86.3 ([4829a675c8](https://github.com/react/react-native/commit/4829a675c80e64f7c170b0f30d24b3808b7663d3) by [@react-native-bot](https://github.com/react-native-bot))
-- Bump hermes-v1 to 250829098.0.17 ([3fd71f07c3](https://github.com/react/react-native/commit/3fd71f07c389c9310630b418c270b742fbb4e948) by [@cipolleschi](https://github.com/cipolleschi))
-- Make post-release asset recovery resumable ([497e1d1293](https://github.com/react/react-native/commit/497e1d1293dbb165a7be96e241bf59480664f27c) by [@cipolleschi](https://github.com/cipolleschi))
-- Bump Podfile.lock ([9d9c446a26](https://github.com/react/react-native/commit/9d9c446a264e86e30b42f8f4fd9bca4bdf50148e) by [@react-native-bot](https://github.com/react-native-bot))
-- Fix post-release recovery failures ([5ea86394b4](https://github.com/react/react-native/commit/5ea86394b4433ca2acd4c0f72a136a44c02e23fa) by [@cipolleschi](https://github.com/cipolleschi))
-- Fix post-release workflow execution ([8bb110d0c0](https://github.com/react/react-native/commit/8bb110d0c0f0e96d0fdbeeb414a8ce17a5ecc379) by [@cipolleschi](https://github.com/cipolleschi))
-- Release 0.86.2 ([ee90a75420](https://github.com/react/react-native/commit/ee90a754201cfdfefcc5e458a10906c9952cf26c) by [@react-native-bot](https://github.com/react-native-bot))
-
-#### Android Unknown
-
-
-
-#### iOS Unknown
-
-- [0.86] Use macOS 26 runners for iOS E2E tests ([3fa695ab25](https://github.com/react/react-native/commit/3fa695ab25a80298348c7db0f163b90d546d9194) by [@cipolleschi](https://github.com/cipolleschi))
-
-#### Failed to parse
-
-
-
-
 ## v0.87.0
 
 ### Breaking
@@ -427,6 +317,29 @@
 ### Security
 
 - **Dependencies**: Fix security vulnerabilities in `xmldom/xmldom`, `fast-xml-parser`, `yaml`, `fast-uri`, and `addressable` transitive dependencies ([284035b21d](https://github.com/react/react-native/commit/284035b21d94a0b2096b3aa3f39470747d191a57) by [@cortinico](https://github.com/cortinico))
+
+## v0.86.3
+
+### Changed
+
+- **Hermes:** Bump hermes-v1 to 250829098.0.17 ([3fd71f07c3](https://github.com/react/react-native/commit/3fd71f07c389c9310630b418c270b742fbb4e948) by [@cipolleschi](https://github.com/cipolleschi))
+
+### Fixed
+
+- **EventEmitter:** Fix use-after-free data race in EventEmitter.cpp ([fdb26edfe7](https://github.com/react/react-native/commit/fdb26edfe79041380147b0dde0ccd6552d29d31b))
+- **Modal:** Fix `parentNode`/`parentElement` returning the document instead of the containing element for `<Modal>` and other nested root host views, which severed capture/bubble event propagation to ancestors rendered above them ([6e3f0e8f9f](https://github.com/react/react-native/commit/6e3f0e8f9fbb947fc05d7f91a625705d599a3144) by [rubennorte](https://github.com/rubennorte))
+
+#### iOS
+
+- **Cocoapods:** Make Podfile.lock SPEC CHECKSUMS deterministic across machines by sorting Dir.glob results in Yoga.podspec and using a dynamically computed Pods-relative path in hermes-engine.podspec ([6e3f0e8f9f](https://github.com/react/react-native/commit/6e3f0e8f9fbb947fc05d7f91a625705d599a3144) by [IsaacIsrael](https://github.com/IsaacIsrael))
+
+#### Android specific
+
+- **Runtime:** Fix ConcurrentModificationException when getInitialURL re-enters during onHostResume ([20d04aefa1](https://github.com/react/react-native/commit/20d04aefa17acbbbf89ff055adf798827bd7787b) by [@nickcernera](https://github.com/nickcernera))
+
+#### iOS specific
+
+- **Font:** Custom fonts with an explicit fontWeight no longer render at the heaviest weight on the New Architecture ([918fb15bfe](https://github.com/react/react-native/commit/918fb15bfe5ff434d036c91be957de62cf8f8449) by [@jensdev](https://github.com/jensdev))
 
 ## v0.86.2
 
