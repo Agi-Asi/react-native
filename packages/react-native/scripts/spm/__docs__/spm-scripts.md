@@ -359,14 +359,15 @@ headers resolve as `#import <MyNativeModule/MyHeader.h>` from the app and from
 other modules.
 
 By design, the entry needs no podspec and no `Package.swift` — app-local native
-code is not required to carry either. 
-If the module ships a hand-written `Package.swift`, then React Native generates nothing and uses the Package.swift as-is.
+code is not required to carry either. If the module ships a hand-written
+`Package.swift`, then React Native generates nothing and uses the Package.swift
+as-is.
 
 | Field     | Meaning                                                                                                                                                                                                                                                                                                           |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`    | The target's name and its header prefix. A valid Swift identifier, not [reserved](#names-react-native-reserves), and not already taken by another module or an autolinked library.                                                                                                                                |
 | `path`    | The module's directory, relative to the app root.                                                                                                                                                                                                                                                                 |
-| `exclude` | Paths inside `path` to keep out of the target, like a podspec's `exclude_files`. It also supports directories with a trailing `/`.                                                                                                                                                                                            |
+| `exclude` | Paths inside `path` to keep out of the target, like a podspec's `exclude_files`. It also supports directories with a trailing `/`.                                                                                                                                                                                |
 | `sources` | Glob allowlist replacing automatic discovery, like a podspec's `source_files`. Without it, every `.h/.m/.mm/.c/.cpp/.swift` file under `path` is compiled, minus `exclude` and the directories the autolinker always skips (`android/`, `test/`, `tests/`, `__tests__/`, `__mocks__/`, `jest/`, `node_modules/`). |
 
 Names must be unique because wrapper directories are keyed by name: two entries
@@ -374,7 +375,7 @@ resolving to one name — or an entry matching an autolinked library — would s
 a directory, and the losing module would silently not be built. So a clash fails
 the build with a rename instruction instead.
 
-### App Modules vs Libraries 
+### App Modules vs Libraries
 
 `spm.modules` is read from the app's own `react-native.config.js` only — entries
 in a dependency's config are ignored, so a library cannot declare its native
