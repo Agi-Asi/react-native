@@ -374,7 +374,7 @@ resolving to one name — or an entry matching an autolinked library — would s
 a directory, and the losing module would silently not be built. So a clash fails
 the build with a rename instruction instead.
 
-### This is an app surface
+### App Modules vs Libraries 
 
 `spm.modules` is read from the app's own `react-native.config.js` only — entries
 in a dependency's config are ignored, so a library cannot declare its native
