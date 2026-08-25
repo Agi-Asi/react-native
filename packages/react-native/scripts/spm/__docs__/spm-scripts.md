@@ -384,11 +384,14 @@ from its podspec — see
 
 ### Limits
 
-- **One target.** `spm add` attaches the `Autolinked` aggregate to a single app
-  target (`--productName` picks it when the project has several), and modules
-  reach only that target. Known gap: rn-tester's test targets
-  (`RNTesterUnitTests`, `RNTesterIntegrationTests`) get their own pods under
-  CocoaPods, and `spm.modules` has no equivalent for them yet.
+- **Modules reach one app target.** Each entry is still its own SwiftPM target —
+  the limit is which targets can use them. `spm add` attaches the `Autolinked`
+  aggregate to a single app target (`--productName` picks it when the project
+  has several), and only that target sees the modules. Declare as many entries
+  as you like; they all arrive through that one aggregate. Known gap:
+  rn-tester's test targets (`RNTesterUnitTests`, `RNTesterIntegrationTests`) get
+  their own pods under CocoaPods, and `spm.modules` has no equivalent for them
+  yet.
 - **One language per module.** SwiftPM cannot mix Swift and Objective-C/C++ in
   one target; a module that does fails the build. Split it per language, or ship
   a hand-written `Package.swift` with a target for each.
