@@ -359,8 +359,8 @@ headers resolve as `#import <MyNativeModule/MyHeader.h>` from the app and from
 other modules.
 
 By design, the entry needs no podspec and no `Package.swift` — app-local native
-code is not required to carry either. (A hand-written `Package.swift` in the
-directory is used as-is; React Native generates nothing.)
+code is not required to carry either. 
+If the module ships a hand-written `Package.swift`, then React Native generates nothing and uses the Package.swift as-is.
 
 | Field     | Meaning                                                                                                                                                                                                                                                                                                           |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
