@@ -1,5 +1,124 @@
 # Changelog
 
+## v0.87.1
+
+### Breaking
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Added
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Added hard fail and clear error message when an autolinking plugin host is referenced as a dependency ([90a539c92d](https://github.com/react/react-native/commit/90a539c92db5f6dc094fc3d23abbc5c6d9eec763) by [@chrfalch](https://github.com/chrfalch))
+
+### Changed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Deprecated
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Removed
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Fixed
+
+- **Animated**: `Animated.Value.addListener()` types its callback payload as `{value: number}` rather than `any` ([3eab03df4c](https://github.com/react/react-native/commit/3eab03df4c06087b984d393dbe807c478eee8378) by [@huntie](https://github.com/huntie))
+- **Animated**: `Animated.event()` is typed as an event handler rather than `any` ([3eb330a365](https://github.com/react/react-native/commit/3eb330a36558be3345f60699a1e2bf4852e1a410) by [@huntie](https://github.com/huntie))
+
+#### Android specific
+
+
+
+#### iOS specific
+
+- Reject colliding or invalid spm.modules names instead of silently dropping a module from the build ([39cd1dfc4c](https://github.com/react/react-native/commit/39cd1dfc4cf851e846483282726d7801f1957ee0) by [@chrfalch](https://github.com/chrfalch))
+- Resolve Swift manifest naming collisions ([962aeec5e5](https://github.com/react/react-native/commit/962aeec5e58a52ad35dc812d4bbf502c75dab0b8) by [@chrfalch](https://github.com/chrfalch))
+- Fixed not reading spm.name from react-native.config.js when scaffolding the Swift manifest ([482acee824](https://github.com/react/react-native/commit/482acee824d2ff32e12c2a98f9c34110e05f3fe8) by [@chrfalch](https://github.com/chrfalch))
+- Removed unused field spm.modules.publicHeaderFiles from react-native.config.js's spm section ([5168f5f831](https://github.com/react/react-native/commit/5168f5f83102a98b1a3f8dac4ce2173d7f8fca90) by Christian Falch)
+- SwiftPM pipeline now reads react-native.config.js with default exports correctly ([ed76640ba6](https://github.com/react/react-native/commit/ed76640ba60b528f048def85a0f8a5907de417ce) by [@chrfalch](https://github.com/chrfalch))
+- Created constants for internal SwiftPM packages so that we can create guards to avoid collisions ([d36aa4961d](https://github.com/react/react-native/commit/d36aa4961d7ff73736da0b9f9ff6c43707069b46) by [@chrfalch](https://github.com/chrfalch))
+- Keep the quotes on header search paths containing spaces in `add_rn_third_party_dependencies` ([71c6bfbfdc](https://github.com/react/react-native/commit/71c6bfbfdc0b502ccabb8a83fbc5f17c3890a321) by [@Kudo](https://github.com/Kudo))
+- Set SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG when injecting SPM ([4433cdbe62](https://github.com/react/react-native/commit/4433cdbe62c193da974ad49e42e6cb6b2d2d84cc) by [@radoslawrolka](https://github.com/radoslawrolka))
+- Recover React-Core-prebuilt configuration swaps that were interrupted before the marker was updated ([a772a7ca16](https://github.com/react/react-native/commit/a772a7ca16eb3cafb77b7fb8f75f21f85ed696b1) by [@adityasingh2400](https://github.com/adityasingh2400))
+- Fix Hermes runtime/compiler version mismatch causing "Wrong bytecode version" crashes in SwiftPM Release builds ([ead93778a1](https://github.com/react/react-native/commit/ead93778a1a06bc1b09ac2ac61bee5224837bf4c) by [@nduaarte](https://github.com/nduaarte))
+
+### Security
+
+
+
+#### Android specific
+
+
+
+#### iOS specific
+
+
+
+### Unknown
+
+- Release 0.87.1 ([a59eff64fa](https://github.com/react/react-native/commit/a59eff64fa907ed6e919fafe6cbd26d1d54c2de3) by [@react-native-bot](https://github.com/react-native-bot))
+- [0.87] Regenerate ReactNativeApi snapshot with CI toolchain ([1a6b526d0e](https://github.com/react/react-native/commit/1a6b526d0e3cfc0cd63da629328bbc12dc75b19c) by [@cipolleschi](https://github.com/cipolleschi))
+- [0.87] Regenerate ReactNativeApi snapshot ([dda5dd3846](https://github.com/react/react-native/commit/dda5dd384639ff5a40de0993a833872f3d7b3026) by [@cipolleschi](https://github.com/cipolleschi))
+- Merge remote-tracking branch 'refs/remotes/origin/pr/58052' into 0.87-stable ([476887c8d5](https://github.com/react/react-native/commit/476887c8d5e650bbfbfb047dac5696690f73660f) by [@cipolleschi](https://github.com/cipolleschi))
+- Bump hermes-v1 to 250829098.0.17 ([861e2d0bde](https://github.com/react/react-native/commit/861e2d0bdeefdb4695e3fa1edf95d9d6009e18b9) by [@cipolleschi](https://github.com/cipolleschi))
+- Bump Podfile.lock ([c6ebb060d9](https://github.com/react/react-native/commit/c6ebb060d9883e905c5e461644a0754f87d0be25) by [@react-native-bot](https://github.com/react-native-bot))
+- Release 0.87.0 ([4bc2473f5d](https://github.com/react/react-native/commit/4bc2473f5d0233ea5384c1ef24f6a55615de2220) by [@react-native-bot](https://github.com/react-native-bot))
+
+#### Android Unknown
+
+
+
+#### iOS Unknown
+
+- [0.87] Use macOS 26 runners for iOS E2E tests ([363a116632](https://github.com/react/react-native/commit/363a116632ec3a60efc96bbf4a0ac681ea956c22) by [@cipolleschi](https://github.com/cipolleschi))
+
+#### Failed to parse
+
+
+
+
 ## v0.87.0
 
 ### Breaking
