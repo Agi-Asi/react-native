@@ -56,6 +56,7 @@ function autolinkedDep(overrides = {}) {
   return {
     name: 'react-native-foo',
     root: '/fake/node_modules/react-native-foo',
+    swiftName: 'ReactNativeFoo',
     platforms: {
       ios: {
         podspecPath:
@@ -72,19 +73,29 @@ function autolinkedDep(overrides = {}) {
 // ---------------------------------------------------------------------------
 
 describe('translatePodspecToSpmTarget', () => {
-  it('always uses toSwiftName(npm-name) as the SPM target name — header_dir does NOT change the target name', () => {
-    // The autolinker registers every autolinked dep under toSwiftName(npmName)
-    // in its aggregator. The scaffolded Package.swift's product MUST match
-    // that or SPM resolution fails on the .product(name:, package:) lookup.
-    // header_dir flows through headerSearchPaths instead.
+  it('uses the name the autolinker resolved, never one derived here', () => {
+    // The autolinker registers every dep in its aggregator under the name it
+    // resolved; the scaffolded product MUST match or SPM resolution fails on
+    // the .product(name:, package:) lookup.
     const model = podspec({
       headerDir: 'react/renderer/components/safeareacontext',
     });
     const spec = translatePodspecToSpmTarget(
       model,
-      autolinkedDep({name: 'react-native-safe-area-context'}),
+      autolinkedDep({
+        name: 'react-native-safe-area-context',
+        swiftName: 'react-native-safe-area-context',
+      }),
     );
-    expect(spec.swiftName).toBe('ReactNativeSafeAreaContext');
+    expect(spec.swiftName).toBe('react-native-safe-area-context');
+  });
+
+  it('fails loudly for a dep whose name was never resolved', () => {
+    const dep = autolinkedDep();
+    delete dep.swiftName;
+    expect(() => translatePodspecToSpmTarget(podspec(), dep)).toThrow(
+      /expandSpmDependencies/,
+    );
   });
 
   it('adds dirname(header_mappings_dir) as a header search path so namespaced includes resolve (reanimated/worklets pattern)', () => {
@@ -294,22 +305,16 @@ describe('translatePodspecToSpmTarget', () => {
     }
   });
 
-  it('still uses toSwiftName(npm-name) even when header_dir is a plain identifier (matches autolinker registration)', () => {
+  it("ignores the model's own header_dir — the resolved name already accounts for it", () => {
     const model = podspec({headerDir: 'reanimated'});
     const spec = translatePodspecToSpmTarget(
       model,
-      autolinkedDep({name: 'react-native-reanimated'}),
+      autolinkedDep({
+        name: 'react-native-reanimated',
+        swiftName: 'reanimated',
+      }),
     );
-    expect(spec.swiftName).toBe('ReactNativeReanimated');
-  });
-
-  it('falls back cleanly when header_dir is absent', () => {
-    const model = podspec({headerDir: null});
-    const spec = translatePodspecToSpmTarget(
-      model,
-      autolinkedDep({name: 'react-native-foo-bar'}),
-    );
-    expect(spec.swiftName).toBe('ReactNativeFooBar');
+    expect(spec.swiftName).toBe('reanimated');
   });
 
   it('substitutes $(PODS_TARGET_SRCROOT) in HEADER_SEARCH_PATHS with the target-relative form', () => {
@@ -784,6 +789,7 @@ end
     return {
       name: 'react-native-foo',
       root: depRoot,
+      swiftName: 'ReactNativeFoo',
       platforms: {ios: {}},
       ...overrides,
     };
@@ -1087,9 +1093,9 @@ describe('scaffoldAll', () => {
   }
 
   it('propagates a Swift name collision instead of scaffolding anyway, plugin or not', () => {
-    // 'react-headers' derives the reserved 'ReactHeaders', with no scope to
-    // borrow. Degrading to the direct deps would scaffold manifests SPM rejects
-    // later, and a plugin buys no exemption — `spm scaffold` has no plugin code.
+    // 'react-headers' derives the reserved 'ReactHeaders'. Degrading to the
+    // direct deps would scaffold manifests SPM rejects later, and a plugin buys
+    // no exemption — `spm scaffold` has no plugin code.
     const depRoot = path.join(appRoot, 'node_modules', 'react-headers');
     fs.mkdirSync(depRoot, {recursive: true});
     fs.writeFileSync(
@@ -1125,6 +1131,47 @@ describe('scaffoldAll', () => {
       expect(logSpy.mock.calls.map(call => call.join(' ')).join('\n')).toMatch(
         /Transitive spm\.dependencies expansion failed/,
       );
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  it('names a degraded dep from its podspec, so the manifest it writes still matches the autolinker', () => {
+    const depRoot = path.join(appRoot, 'node_modules', 'react-native-svg');
+    fs.mkdirSync(path.join(depRoot, 'ios'), {recursive: true});
+    fs.writeFileSync(path.join(depRoot, 'ios', 'Lib.mm'), '// src\n');
+    fs.writeFileSync(
+      path.join(depRoot, 'react-native.config.js'),
+      "module.exports = {spm: {dependencies: ['ghost-dep-that-is-not-installed']}};\n",
+    );
+    fs.writeFileSync(
+      path.join(depRoot, 'RNSVG.podspec'),
+      [
+        'Pod::Spec.new do |s|',
+        '  s.name = "RNSVG"',
+        '  s.version = "1.0.0"',
+        '  s.source_files = "ios/**/*.{h,m,mm}"',
+        'end',
+        '',
+      ].join('\n'),
+    );
+    writeAutolinkingJson({
+      'react-native-svg': {root: depRoot, platforms: {ios: {}}},
+    });
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      const [result] = scaffoldAll({
+        appRoot,
+        projectRoot: appRoot,
+        reactNativeRoot: appRoot,
+      });
+      expect(result.status).toBe('written');
+      const manifest = fs.readFileSync(
+        path.join(depRoot, 'Package.swift'),
+        'utf8',
+      );
+      expect(manifest).toContain('name: "RNSVG"');
+      expect(manifest).not.toContain('ReactNativeSvg');
     } finally {
       logSpy.mockRestore();
     }
@@ -1266,6 +1313,7 @@ describe('scaffoldPackageSwiftForDep — version-based regen', () => {
     return {
       name: 'react-native-foo',
       root: depRoot,
+      swiftName: 'ReactNativeFoo',
       platforms: {ios: {}},
     };
   }

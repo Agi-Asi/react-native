@@ -1292,7 +1292,15 @@ describe('main() — spm.modules names', () => {
         path.join(depDir, 'Package.swift'),
         '// swift-tools-version: 6.0\n',
       );
-      dependencies[dep.name] = {root: depDir, platforms: {ios: {}}};
+      const ios = {};
+      if (dep.podName != null) {
+        ios.podspecPath = path.join(depDir, `${dep.podName}.podspec`);
+        fs.writeFileSync(
+          ios.podspecPath,
+          `Pod::Spec.new do |s|\n  s.name = "${dep.podName}"\n  s.version = "1.0.0"\nend\n`,
+        );
+      }
+      dependencies[dep.name] = {root: depDir, platforms: {ios}};
     }
     const autolinkDir = path.join(appRoot, 'build', 'generated', 'autolinking');
     fs.mkdirSync(autolinkDir, {recursive: true});
@@ -1351,6 +1359,30 @@ describe('main() — spm.modules names', () => {
     expect(() => run(app)).toThrow(SpmNameCollisionError);
     expect(() => run(app)).toThrow(
       /the 'spm.modules' entry 'shared' differs from the existing target 'Shared' only in case/,
+    );
+  });
+
+  it('rejects two modules whose names differ only in punctuation', () => {
+    const app = buildApp({
+      modules: [
+        {name: 'foo-bar', path: 'ios/one'},
+        {name: 'foo_bar', path: 'ios/two'},
+      ],
+    });
+    expect(() => run(app)).toThrow(SpmNameCollisionError);
+    expect(() => run(app)).toThrow(
+      /the 'spm.modules' entry 'foo_bar' compiles as the same module as the existing target 'foo-bar'/,
+    );
+  });
+
+  it('rejects a module colliding with an autolinked dep through SwiftPM normalization', () => {
+    const app = buildApp({
+      modules: [{name: 'foo_bar', path: 'ios/MyNativeModule'}],
+      dep: {name: 'react-native-foo-bar', podName: 'foo-bar'},
+    });
+    expect(() => run(app)).toThrow(SpmNameCollisionError);
+    expect(() => run(app)).toThrow(
+      /the 'spm.modules' entry 'foo_bar' compiles as the same module as the existing target 'foo-bar'/,
     );
   });
 
@@ -1744,18 +1776,15 @@ describe('main() — .spm-sync-watch-paths emission', () => {
 });
 
 // ---------------------------------------------------------------------------
-// main() — scope disambiguation: the borrowed name reaching a real manifest.
+// main() — the name a dep's podspec declares reaching a real manifest.
 // ---------------------------------------------------------------------------
 
-describe('main() — scope disambiguation', () => {
+describe('main() — podspec-derived names', () => {
   let created = [];
   let spies = [];
-  let logSpy;
 
   beforeEach(() => {
-    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-    spies.push(logSpy);
-    for (const m of ['warn', 'error']) {
+    for (const m of ['log', 'warn', 'error']) {
       spies.push(jest.spyOn(console, m).mockImplementation(() => {}));
     }
   });
@@ -1767,10 +1796,11 @@ describe('main() — scope disambiguation', () => {
     created = [];
   });
 
-  // Each dep ships a Package.swift, so it reaches the aggregator as self-managed.
-  function buildFixture(...depNames) {
+  // Each dep ships a Package.swift, so it reaches the aggregator as
+  // self-managed, plus the podspec its name is meant to come from.
+  function buildFixture(...deps) {
     const appRoot = fs.realpathSync(
-      fs.mkdtempSync(path.join(os.tmpdir(), 'spm-scope-disambig-')),
+      fs.mkdtempSync(path.join(os.tmpdir(), 'spm-podspec-name-')),
     );
     created.push(appRoot);
     const rnRoot = path.join(appRoot, 'rn');
@@ -1780,8 +1810,8 @@ describe('main() — scope disambiguation', () => {
       JSON.stringify({name: 'app'}),
     );
     const dependencies = {};
-    for (const depName of depNames) {
-      const depDir = path.join(appRoot, 'node_modules', ...depName.split('/'));
+    for (const {npmName, podName, headerDir} of deps) {
+      const depDir = path.join(appRoot, 'node_modules', ...npmName.split('/'));
       fs.mkdirSync(path.join(depDir, 'ios'), {recursive: true});
       fs.writeFileSync(
         path.join(depDir, 'Package.swift'),
@@ -1789,7 +1819,24 @@ describe('main() — scope disambiguation', () => {
       );
       fs.writeFileSync(path.join(depDir, 'ios', 'Lib.h'), '// header\n');
       fs.writeFileSync(path.join(depDir, 'ios', 'Lib.mm'), '// src\n');
-      dependencies[depName] = {root: depDir, platforms: {ios: {}}};
+      const ios = {};
+      if (podName != null) {
+        const podspecPath = path.join(depDir, `${podName}.podspec`);
+        fs.writeFileSync(
+          podspecPath,
+          [
+            'Pod::Spec.new do |s|',
+            `  s.name = "${podName}"`,
+            '  s.version = "1.0.0"',
+            ...(headerDir != null ? [`  s.header_dir = "${headerDir}"`] : []),
+            '  s.source_files = "ios/**/*.{h,m,mm}"',
+            'end',
+            '',
+          ].join('\n'),
+        );
+        ios.podspecPath = podspecPath;
+      }
+      dependencies[npmName] = {root: depDir, platforms: {ios}};
     }
     const autolinkDir = path.join(appRoot, 'build', 'generated', 'autolinking');
     fs.mkdirSync(autolinkDir, {recursive: true});
@@ -1800,77 +1847,98 @@ describe('main() — scope disambiguation', () => {
     return {appRoot, rnRoot};
   }
 
-  it('emits the disambiguated name as the package ref, the product ref and the header slice', () => {
-    const {appRoot, rnRoot} = buildFixture('@powersync/react-native');
+  function run(appRoot, rnRoot) {
     main(['--app-root', appRoot, '--react-native-root', rnRoot]);
-
     const outDir = path.join(appRoot, 'build/generated/autolinking');
-    const pkg = fs.readFileSync(path.join(outDir, 'Package.swift'), 'utf8');
-    expect(pkg).toContain(
-      '.package(name: "PowersyncReactNative", path: "libs/PowersyncReactNative")',
-    );
-    expect(pkg).toContain(
-      '.product(name: "PowersyncReactNative", package: "PowersyncReactNative")',
-    );
-    // Nothing is referenced under the name the derivation would have taken.
-    expect(pkg).not.toContain('"ReactNative", path: "libs/');
-    expect(pkg).not.toContain('package: "ReactNative"');
+    return {
+      outDir,
+      manifest: fs.readFileSync(path.join(outDir, 'Package.swift'), 'utf8'),
+    };
+  }
 
-    // So `#import <PowersyncReactNative/Lib.h>` resolves for consumers.
-    expect(
-      fs.existsSync(
-        path.join(outDir, 'headers/PowersyncReactNative/ios/Lib.h'),
-      ),
-    ).toBe(true);
-    expect(fs.existsSync(path.join(outDir, 'libs/PowersyncReactNative'))).toBe(
+  it('emits the podspec name as the package ref, the product ref and the header slice', () => {
+    const {appRoot, rnRoot} = buildFixture({
+      npmName: 'react-native-svg',
+      podName: 'RNSVG',
+    });
+    const {outDir, manifest} = run(appRoot, rnRoot);
+
+    expect(manifest).toContain('.package(name: "RNSVG", path: "libs/RNSVG")');
+    expect(manifest).toContain('.product(name: "RNSVG", package: "RNSVG")');
+    // So `#import <RNSVG/Lib.h>` resolves for consumers.
+    expect(fs.existsSync(path.join(outDir, 'headers/RNSVG/ios/Lib.h'))).toBe(
       true,
     );
-    expect(fs.existsSync(path.join(outDir, 'headers/ReactNative'))).toBe(false);
+    expect(fs.existsSync(path.join(outDir, 'libs/RNSVG'))).toBe(true);
+
+    // Nothing is referenced under the name the npm package name would derive.
+    expect(manifest).not.toContain('ReactNativeSvg');
+    expect(fs.existsSync(path.join(outDir, 'headers/ReactNativeSvg'))).toBe(
+      false,
+    );
   });
 
-  it('tells the developer which name it took and why', () => {
-    const {appRoot, rnRoot} = buildFixture('@powersync/react-native');
-    main(['--app-root', appRoot, '--react-native-root', rnRoot]);
+  it('emits header_dir in preference to the podspec name', () => {
+    const {appRoot, rnRoot} = buildFixture({
+      npmName: 'react-native-reanimated',
+      podName: 'RNReanimated',
+      headerDir: 'reanimated',
+    });
+    const {outDir, manifest} = run(appRoot, rnRoot);
 
-    const line = logSpy.mock.calls
-      .map(call => call.join(' '))
-      .find(l => l.includes('PowersyncReactNative'));
-    expect(line).toBeDefined();
-    expect(line).toContain('@powersync/react-native');
-    expect(line).toContain("'ReactNative'");
+    expect(manifest).toContain(
+      '.package(name: "reanimated", path: "libs/reanimated")',
+    );
+    expect(manifest).toContain(
+      '.product(name: "reanimated", package: "reanimated")',
+    );
+    expect(
+      fs.existsSync(path.join(outDir, 'headers/reanimated/ios/Lib.h')),
+    ).toBe(true);
+    expect(manifest).not.toContain('RNReanimated');
   });
 
-  it('still rejects an unscoped dep deriving a reserved name — it has no scope to borrow', () => {
-    const {appRoot, rnRoot} = buildFixture('react-headers');
-    expect(() =>
-      main(['--app-root', appRoot, '--react-native-root', rnRoot]),
-    ).toThrow(SpmNameCollisionError);
+  it('emits the npm-derived name for a dep that ships no podspec', () => {
+    const {appRoot, rnRoot} = buildFixture({npmName: 'react-native-svg'});
+    const {outDir, manifest} = run(appRoot, rnRoot);
+
+    expect(manifest).toContain(
+      '.package(name: "ReactNativeSvg", path: "libs/ReactNativeSvg")',
+    );
+    expect(
+      fs.existsSync(path.join(outDir, 'headers/ReactNativeSvg/ios/Lib.h')),
+    ).toBe(true);
   });
 
-  it('emits both names of a dep-vs-dep collision as package refs, product refs and header slices', () => {
-    const {appRoot, rnRoot} = buildFixture('@a/foo', '@b/foo');
-    main(['--app-root', appRoot, '--react-native-root', rnRoot]);
-
-    const outDir = path.join(appRoot, 'build/generated/autolinking');
-    const pkg = fs.readFileSync(path.join(outDir, 'Package.swift'), 'utf8');
-    for (const name of ['AFoo', 'BFoo']) {
-      expect(pkg).toContain(`.package(name: "${name}", path: "libs/${name}")`);
-      expect(pkg).toContain(`.product(name: "${name}", package: "${name}")`);
-      expect(
-        fs.existsSync(path.join(outDir, `headers/${name}/ios/Lib.h`)),
-      ).toBe(true);
-    }
-    expect(pkg).not.toContain('"Foo", path: "libs/');
-    expect(pkg).not.toContain('package: "Foo"');
-    expect(fs.existsSync(path.join(outDir, 'headers/Foo'))).toBe(false);
+  it('refuses a podspec name React Native reserves, naming spm.name as the fix', () => {
+    const {appRoot, rnRoot} = buildFixture({
+      npmName: 'some-lib',
+      podName: 'ReactHeaders',
+    });
+    expect(() => run(appRoot, rnRoot)).toThrow(SpmNameCollisionError);
+    expect(() => run(appRoot, rnRoot)).toThrow(/Set a different 'spm\.name'/);
   });
 
-  it('still rejects a collision the scopes cannot resolve', () => {
-    // 'a-foo' already derives 'AFoo', the name '@a/foo' borrows.
-    const {appRoot, rnRoot} = buildFixture('@a/foo', '@b/foo', 'a-foo');
-    expect(() =>
-      main(['--app-root', appRoot, '--react-native-root', rnRoot]),
-    ).toThrow(SpmNameCollisionError);
+  it('refuses two deps whose podspecs claim one name', () => {
+    const {appRoot, rnRoot} = buildFixture(
+      {npmName: 'react-native-svg', podName: 'RNSVG'},
+      {npmName: 'react-native-svg-fork', podName: 'RNSVG'},
+    );
+    expect(() => run(appRoot, rnRoot)).toThrow(SpmNameCollisionError);
+    expect(() => run(appRoot, rnRoot)).toThrow(/both resolve to 'RNSVG'/);
+  });
+
+  it('refuses a scoped dep whose npm-derived name is reserved, rather than renaming it', () => {
+    const {appRoot, rnRoot} = buildFixture({
+      npmName: '@powersync/react-native',
+    });
+    expect(() => run(appRoot, rnRoot)).toThrow(SpmNameCollisionError);
+    expect(() => run(appRoot, rnRoot)).toThrow(/React Native reserves/);
+  });
+
+  it('refuses an unscoped dep deriving a reserved name', () => {
+    const {appRoot, rnRoot} = buildFixture({npmName: 'react-headers'});
+    expect(() => run(appRoot, rnRoot)).toThrow(SpmNameCollisionError);
   });
 });
 

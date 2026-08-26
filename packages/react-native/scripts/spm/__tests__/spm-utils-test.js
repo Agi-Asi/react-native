@@ -34,6 +34,8 @@ const {
   resolveReactNativeRoot,
   runCodegenAndInstallTemplate,
   sharedCacheDir,
+  swiftNameKey,
+  toC99Name,
   toSwiftName,
 } = require('../spm-utils');
 const fs = require('node:fs');
@@ -54,6 +56,38 @@ describe('toSwiftName', () => {
     ['my_great_app', 'MyGreatApp'],
   ])('toSwiftName(%j) => %j', (input, expected) => {
     expect(toSwiftName(input)).toBe(expected);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toC99Name / swiftNameKey — what SwiftPM compiles a target name as, and the
+// key two target names have to differ in to be two targets.
+// ---------------------------------------------------------------------------
+
+describe('toC99Name', () => {
+  it.each([
+    ['RNSVG', 'RNSVG'],
+    ['react-native-svg', 'react_native_svg'],
+    ['react_native_svg', 'react_native_svg'],
+    ['Some.Pod', 'Some_Pod'],
+    ['React-Core', 'React_Core'],
+    ['3d-lib', '_3d_lib'],
+  ])('toC99Name(%j) => %j', (input, expected) => {
+    expect(toC99Name(input)).toBe(expected);
+  });
+});
+
+describe('swiftNameKey', () => {
+  it('collapses names that differ only in punctuation', () => {
+    expect(swiftNameKey('foo-bar')).toBe(swiftNameKey('foo_bar'));
+  });
+
+  it('collapses names that differ only in case', () => {
+    expect(swiftNameKey('worklets')).toBe(swiftNameKey('Worklets'));
+  });
+
+  it('keeps genuinely different names apart', () => {
+    expect(swiftNameKey('RNSVG')).not.toBe(swiftNameKey('RNScreens'));
   });
 });
 

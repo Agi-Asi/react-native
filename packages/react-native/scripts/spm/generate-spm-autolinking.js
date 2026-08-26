@@ -62,11 +62,12 @@ const {
   SpmNameCollisionError,
   assertSwiftNameNotReserved,
   defaultReadConfig,
+  defaultReadPodspec,
   defaultResolveDep,
   expandSpmDependencies,
   isValidSwiftName,
 } = require('./expand-spm-dependencies');
-const {readPodspec} = require('./read-podspec');
+const {findPodspecs, readPodspecCached} = require('./read-podspec');
 const {
   AUTOLINKED_PACKAGE_NAME,
   REACT_CODEGEN_PACKAGE_NAME,
@@ -77,6 +78,7 @@ const {
   findProjectRoot,
   makeLogger,
   remotePackageConfig,
+  swiftNameKey,
 } = require('./spm-utils');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -267,11 +269,25 @@ function readSpmModulesFromConfig(
   }
 }
 
+// Why the module name cannot stand, in the terms the app author can act on.
+function moduleClashDiagnosis(
+  moduleName /*: string */,
+  clash /*: string */,
+) /*: string */ {
+  if (clash === moduleName) {
+    return `is already the name of another autolinked target.`;
+  }
+  if (clash.toLowerCase() === moduleName.toLowerCase()) {
+    return `differs from the existing target '${clash}' only in case, which collides on case-insensitive filesystems.`;
+  }
+  return `compiles as the same module as the existing target '${clash}'.`;
+}
+
 /**
  * Validates one app-local `spm.modules` name against the same rules a library's
  * `spm.name` gets: a usable Swift identifier, not a name React Native reserves,
  * and not one already taken by another module or an autolinked dep.
- * `taken` maps lower-cased name → the name as written.
+ * `taken` is keyed by swiftNameKey, valued with the name as written.
  */
 function assertSpmModuleName(
   name /*: unknown */,
@@ -290,13 +306,11 @@ function assertSpmModuleName(
     remedy,
     extraReservedNames: reservedNamesForRun(),
   });
-  const clash = taken.get(moduleName.toLowerCase());
+  const clash = taken.get(swiftNameKey(moduleName));
   if (clash != null) {
     throw new SpmNameCollisionError(
       `react-native autolinking: SPM Swift name collision: the 'spm.modules' entry '${moduleName}' ` +
-        (clash === moduleName
-          ? `is already the name of another autolinked target.`
-          : `differs from the existing target '${clash}' only in case, which collides on case-insensitive filesystems.`) +
+        moduleClashDiagnosis(moduleName, clash) +
         ` ${remedy}`,
     );
   }
@@ -433,21 +447,9 @@ function findSelfManagedPackageDir(absSource /*: string */) /*: ?string */ {
  * the scaffolder translates the podspec into a Package.swift.
  */
 function hasPodspec(absSource /*: string */) /*: boolean */ {
-  for (const sub of ['', 'ios']) {
-    const dir = sub === '' ? absSource : path.join(absSource, sub);
-    try {
-      if (
-        fs
-          .readdirSync(dir)
-          .some(e => e.endsWith('.podspec') && !e.startsWith('.spm-scaffold-'))
-      ) {
-        return true;
-      }
-    } catch {
-      // dir does not exist; try the next candidate
-    }
-  }
-  return false;
+  return [absSource, path.join(absSource, 'ios')].some(
+    dir => findPodspecs(dir).length > 0,
+  );
 }
 
 /**
@@ -778,9 +780,9 @@ function expandSpmSourceGlobs(
  * Returns null if the dependency doesn't have iOS support.
  *
  * `swiftNameByNpm` maps each autolinked dep's npm name to its resolved Swift
- * name (populated by expandSpmDependencies, honoring the dep's `spm.name`
- * config and scope disambiguation). Every name this function emits comes from
- * there — see requireSwiftName.
+ * name (populated by expandSpmDependencies from the dep's podspec and
+ * `spm.name`). Every name this function emits comes from there — see
+ * requireSwiftName.
  */
 /**
  * Read the dep's podspec (if any) and extract its declared
@@ -799,24 +801,12 @@ function expandSpmSourceGlobs(
 function extractPodspecHeaderSearchPaths(
   sourceDir /*: string */,
 ) /*: Array<string> */ {
-  let podspecPath /*: ?string */ = null;
-  try {
-    const entries = fs.readdirSync(sourceDir);
-    // Skip a crashed run's leftover `.spm-scaffold-<pid>-<name>.podspec` copy.
-    const candidate = entries.find(
-      e => e.endsWith('.podspec') && !e.startsWith('.spm-scaffold-'),
-    );
-    if (candidate != null) {
-      podspecPath = path.join(sourceDir, candidate);
-    }
-  } catch {
-    return [];
-  }
+  const podspecPath /*: ?string */ = findPodspecs(sourceDir)[0];
   if (podspecPath == null) return [];
 
   let model;
   try {
-    model = readPodspec(podspecPath);
+    model = readPodspecCached(podspecPath);
   } catch {
     return [];
   }
@@ -1312,8 +1302,8 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
     const allDeps = expandSpmDependencies(directDeps, {
       readConfig: defaultReadConfig,
       resolveDep: defaultResolveDep,
+      readPodspec: defaultReadPodspec,
       extraReservedNames: reservedNamesForRun(),
-      log,
     });
 
     // Map every autolinked npm name to its resolved Swift name so transitive
@@ -1419,11 +1409,11 @@ function main(argv /*:: ?: Array<string> */) /*: void */ {
   // checks a dep's Swift name gets. Seeded with the dep target names already
   // emitted so a module can't shadow an autolinked library either.
   const takenSwiftNames /*: Map<string, string> */ = new Map(
-    entries.map(entry => [entry.target.name.toLowerCase(), entry.target.name]),
+    entries.map(entry => [swiftNameKey(entry.target.name), entry.target.name]),
   );
   for (const mod of configModules) {
     assertSpmModuleName(mod.name, takenSwiftNames);
-    takenSwiftNames.set(mod.name.toLowerCase(), mod.name);
+    takenSwiftNames.set(swiftNameKey(mod.name), mod.name);
     const absPath = path.resolve(appRoot, mod.path);
     const relPath = path.relative(outputDir, absPath);
     const userSources =

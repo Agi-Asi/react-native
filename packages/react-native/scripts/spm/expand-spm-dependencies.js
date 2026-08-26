@@ -10,7 +10,18 @@
 
 'use strict';
 
-const {RESERVED_SWIFT_NAMES, makeLogger, toSwiftName} = require('./spm-utils');
+const {
+  findPodspecs,
+  readPodspecCached,
+  readPodspecNames,
+} = require('./read-podspec');
+const {
+  RESERVED_SWIFT_NAMES,
+  makeLogger,
+  swiftNameKey,
+  toC99Name,
+  toSwiftName,
+} = require('./spm-utils');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -34,8 +45,10 @@ const {warn} = makeLogger('expand-spm-dependencies');
  * list with autolinking-shaped entries so the downstream pipeline can convert
  * each to an SPM target without further branching.
  *
- * I/O is injected (readConfig, resolveDep, log) so the logic stays pure and
- * testable.
+ * It also resolves each dep's Swift target name — see resolveSwiftName.
+ *
+ * I/O is injected (readConfig, resolveDep, readPodspec) so the logic stays pure
+ * and testable.
  */
 
 /*::
@@ -46,17 +59,20 @@ import type {AutolinkedDep} from './spm-types';
 type RnConfig = {...};
 type ReadConfig = (root: string) => ?RnConfig;
 type ResolveDep = (name: string, fromRoot: string) => ?string;
-type Log = (message: string) => void;
-// Keyed by lower case, valued with the canonical spelling: two names differing
-// only in case are not distinct enough for the build to keep the two apart.
+// The podspec fields that name a library. A PodspecModel satisfies it.
+type PodspecFacts = {readonly name?: ?string, readonly headerDir?: ?string, ...};
+type ReadPodspec = (root: string, podspecPath: ?string) => ?PodspecFacts;
+// Keyed by swiftNameKey, valued with the canonical spelling: a name that only
+// differs from a reserved one in case or punctuation is not distinct enough for
+// the build to keep the two apart.
 type ReservedNames = ReadonlyMap<string, string>;
 type Options = {
   readConfig: ReadConfig,
   resolveDep: ResolveDep,
+  readPodspec?: ?ReadPodspec,
   // Names to reserve alongside RESERVED_SWIFT_NAMES, supplied by the caller
   // (remote mode relabels the RN package) since this module reads no config.
   extraReservedNames?: ?ReadonlyArray<string>,
-  log?: ?Log,
 };
 */
 
@@ -83,32 +99,48 @@ function reservedSwiftNames(
 ) /*: ReservedNames */ {
   return new Map(
     [...RESERVED_SWIFT_NAMES, ...(extraReservedNames ?? [])].map(name => [
-      name.toLowerCase(),
+      swiftNameKey(name),
       name,
     ]),
   );
 }
 
-// The scope-borrowed form of a name: `@powersync/react-native`'s `ReactNative`
-// becomes `PowersyncReactNative`.
-function scopeBorrowedName(
+// The prefix a podspec publishes its headers under, or null when it declares
+// none. A prefix Swift cannot spell is normalized rather than abandoned:
+// reverting to the npm name would silently produce a prefix nothing imports.
+function podspecSwiftName(
   npmName /*: string */,
-  swiftName /*: string */,
+  podspec /*: ?PodspecFacts */,
 ) /*: ?string */ {
-  const scope = /^@([^/]+)\//.exec(npmName)?.[1];
-  return scope == null ? null : `${toSwiftName(scope)}${swiftName}`;
+  for (const candidate of [podspec?.headerDir, podspec?.name]) {
+    if (typeof candidate !== 'string' || candidate.length === 0) {
+      continue;
+    }
+    if (isValidSwiftName(candidate)) {
+      return candidate;
+    }
+    const normalized = toC99Name(candidate);
+    warn(
+      `'${npmName}' declares the podspec prefix '${candidate}', which is not a valid Swift target name; using '${normalized}'. ` +
+        `Set 'spm.name' in ${npmName}'s react-native.config.js to choose the prefix yourself.`,
+    );
+    return normalized;
+  }
+  return null;
 }
 
-// The Swift target name for one dep, judged in isolation. `spm.name` is for
-// libraries whose import prefix differs from the derived name:
-// `react-native-worklets` ships headers as `<worklets/...>` (podspec
-// `s.header_dir`), so its target is `worklets`, not `ReactNativeWorklets`. A
-// derived name that lands on a reserved one borrows the npm scope instead.
+/**
+ * The Swift target name for one dep, which is also the prefix its headers are
+ * imported under (`#import <Name/Header.h>`). The podspec is the source of
+ * truth — `react-native-svg` publishes `RNSVG`, not `ReactNativeSvg` — with
+ * `header_dir` ahead of the pod name, since that is what a library sets when
+ * the two differ. `spm.name` overrides both; the npm name is the last resort,
+ * for a library that ships a `Package.swift` and no podspec.
+ */
 function resolveSwiftName(
   npmName /*: string */,
   config /*: ?RnConfig */,
-  reserved /*: ReservedNames */,
-  log /*:: ?: ?Log */,
+  podspec /*: ?PodspecFacts */,
 ) /*: string */ {
   // $FlowFixMe[prop-missing] config has dynamic shape
   const override = config?.spm?.name;
@@ -126,19 +158,37 @@ function resolveSwiftName(
     return override;
   }
 
-  const derived = toSwiftName(npmName);
-  if (!reserved.has(derived.toLowerCase())) {
-    return derived;
+  return podspecSwiftName(npmName, podspec) ?? toSwiftName(npmName);
+}
+
+// Why two names collide, in the terms the author can act on.
+function collisionDiagnosis(
+  existing /*: string */,
+  swiftName /*: string */,
+) /*: string */ {
+  if (existing === swiftName) {
+    return `both resolve to '${swiftName}'.`;
   }
-  const disambiguated = scopeBorrowedName(npmName, derived);
-  if (disambiguated == null || reserved.has(disambiguated.toLowerCase())) {
-    return derived;
+  if (existing.toLowerCase() === swiftName.toLowerCase()) {
+    return `differ only in case, which collides on case-insensitive filesystems.`;
   }
-  log?.(
-    `'${npmName}' would take React Native's reserved name '${derived}', so its npm scope is prepended: '${disambiguated}'. ` +
-      `Set 'spm.name' in ${npmName}'s react-native.config.js to choose the name yourself.`,
-  );
-  return disambiguated;
+  return `both compile as the module '${toC99Name(swiftName)}' — SwiftPM replaces every character C99 rejects.`;
+}
+
+// Why the name cannot stand, in the terms the author can act on. Vaguer about
+// the clash than the dep-vs-dep message on purpose: this set spans package
+// identities and product names, which collide differently.
+function reservedDiagnosis(
+  swiftName /*: string */,
+  reservedName /*: string */,
+) /*: string */ {
+  if (reservedName === swiftName) {
+    return `which React Native reserves for its own SPM package and products.`;
+  }
+  if (reservedName.toLowerCase() === swiftName.toLowerCase()) {
+    return `which differs from React Native's reserved '${reservedName}' only in case — not distinct enough for the build to keep the two apart.`;
+  }
+  return `which compiles as the same module as React Native's reserved '${reservedName}'.`;
 }
 
 function assertNameNotReserved(
@@ -146,17 +196,13 @@ function assertNameNotReserved(
   reserved /*: ReservedNames */,
   labels /*: {label: string, remedy: string} */,
 ) /*: void */ {
-  const reservedName = reserved.get(swiftName.toLowerCase());
+  const reservedName = reserved.get(swiftNameKey(swiftName));
   if (reservedName == null) {
     return;
   }
-  // Vaguer about the case clash than the dep-vs-dep message on purpose: this
-  // set spans package identities and product names, which collide differently.
   throw new SpmNameCollisionError(
     `react-native autolinking: SPM Swift name collision: ${labels.label} resolves to '${swiftName}', ` +
-      (reservedName === swiftName
-        ? `which React Native reserves for its own SPM package and products.`
-        : `which differs from React Native's reserved '${reservedName}' only in case — not distinct enough for the build to keep the two apart.`) +
+      reservedDiagnosis(swiftName, reservedName) +
       ` ${labels.remedy}`,
   );
 }
@@ -199,78 +245,30 @@ function assertNoReservedSwiftNames(
   }
 }
 
-// Pulls apart deps that resolved to the same name by borrowing their npm scopes.
-// Every scoped member of a colliding group moves: there is no non-arbitrary
-// winner to keep. Exactly one pass — retrying would trade a diagnosable error
-// for a name nobody can predict.
-function disambiguateSharedSwiftNames(
-  deps /*: ReadonlyArray<AutolinkedDep> */,
-  autoNamed /*: ReadonlySet<string> */,
-  log /*: ?Log */,
-) /*: void */ {
-  const groups /*: Map<string, Array<{dep: AutolinkedDep, swiftName: string}>> */ =
-    new Map();
-  for (const dep of deps) {
-    const swiftName = dep.swiftName;
-    if (swiftName == null) {
-      continue;
-    }
-    const key = swiftName.toLowerCase();
-    const group = groups.get(key);
-    if (group == null) {
-      groups.set(key, [{dep, swiftName}]);
-    } else {
-      group.push({dep, swiftName});
-    }
-  }
-
-  for (const group of groups.values()) {
-    if (group.length < 2) {
-      continue;
-    }
-    for (const {dep, swiftName} of group) {
-      // A name we derived can borrow a second time (`AAReactNative`); the
-      // member whose name we did not derive is the incumbent and keeps it.
-      if (!autoNamed.has(dep.name)) {
-        continue;
-      }
-      const borrowed = scopeBorrowedName(dep.name, swiftName);
-      if (borrowed == null) {
-        continue;
-      }
-      const others = group
-        .filter(other => other.dep !== dep)
-        .map(other => `'${other.dep.name}'`)
-        .join(', ');
-      log?.(
-        `'${dep.name}' would share the name '${swiftName}' with ${others}, so its npm scope is prepended: '${borrowed}'. ` +
-          `Set 'spm.name' in ${dep.name}'s react-native.config.js to choose the name yourself.`,
-      );
-      dep.swiftName = borrowed;
-    }
-  }
-}
-
 function expandSpmDependencies(
   directDeps /*: Array<AutolinkedDep> */,
   options /*: Options */,
 ) /*: Array<AutolinkedDep> */ {
-  const {readConfig, resolveDep, extraReservedNames, log} = options;
+  const {readConfig, resolveDep, readPodspec, extraReservedNames} = options;
   const reserved = reservedSwiftNames(extraReservedNames);
   const byName /*: Map<string, AutolinkedDep> */ = new Map();
   for (const dep of directDeps) {
     byName.set(dep.name, {...dep, spmDependencies: []});
   }
-  const autoNamed /*: Set<string> */ = new Set();
-  const resolveName = (
-    npmName /*: string */,
-    config /*: ?RnConfig */,
-  ) /*: string */ => {
-    // $FlowFixMe[prop-missing] config has dynamic shape
-    if (config?.spm?.name == null) {
-      autoNamed.add(npmName);
+  // A podspec that cannot be read leaves the name to the next precedence step,
+  // rather than failing a build over a file only CocoaPods needs.
+  const podspecFor = (
+    root /*: string */,
+    podspecPath /*: ?string */,
+  ) /*: ?PodspecFacts */ => {
+    if (readPodspec == null) {
+      return null;
     }
-    return resolveSwiftName(npmName, config, reserved, log);
+    try {
+      return readPodspec(root, podspecPath);
+    } catch {
+      return null;
+    }
   };
 
   const queue /*: Array<string> */ = directDeps.map(d => d.name);
@@ -287,7 +285,11 @@ function expandSpmDependencies(
     // Resolve swiftName lazily from the same config read we already need for
     // spm.dependencies — saves a duplicate readConfig call per direct dep.
     if (current.swiftName == null) {
-      current.swiftName = resolveName(currentName, config);
+      current.swiftName = resolveSwiftName(
+        currentName,
+        config,
+        podspecFor(current.root, current.platforms.ios.podspecPath),
+      );
     }
     // $FlowFixMe[prop-missing] config has dynamic shape
     const transitives /*: Array<string> */ = config?.spm?.dependencies ?? [];
@@ -316,7 +318,11 @@ function expandSpmDependencies(
           name: transitiveName,
           root: transitiveRoot,
           platforms: {ios: iosPlatform},
-          swiftName: resolveName(transitiveName, transitiveConfig),
+          swiftName: resolveSwiftName(
+            transitiveName,
+            transitiveConfig,
+            podspecFor(transitiveRoot, iosPlatform.podspecPath),
+          ),
           spmDependencies: [],
         });
         queue.push(transitiveName);
@@ -328,36 +334,25 @@ function expandSpmDependencies(
 
   const allDeps /*: Array<AutolinkedDep> */ = Array.from(byName.values());
 
-  disambiguateSharedSwiftNames(allDeps, autoNamed, log);
-
-  // Both checks below validate the FINAL set, after that pass: a borrowed scope
-  // can land on a reserved name, or on one another dep already holds.
   assertNoReservedSwiftNames(allDeps, reserved);
 
-  // Collision check: two deps mapping to the same Swift name (whether via
-  // override or auto-derivation) would clobber each other in the synth
-  // package layout and the centralized headers tree. Surface it now with a
-  // clear message instead of letting SPM emit a confusing duplicate-target
-  // error later.
-  // Key case-INSENSITIVELY: resolveSwiftName permits lowercase ('worklets')
-  // while toSwiftName produces TitleCase ('Worklets') — an exact-equality check
-  // passes but the two still collide as directories on the default
-  // case-insensitive macOS filesystem (synth package layout + headers tree).
+  // Collision check: two deps mapping to the same Swift name would clobber each
+  // other in the synth package layout and the centralized headers tree. Surface
+  // it now with a clear message instead of letting SPM emit a confusing
+  // duplicate-target error later. swiftNameKey is what makes two names two
+  // targets — punctuation collapses into one module, case into one directory.
   const seen /*: Map<string, {name: string, swiftName: string}> */ = new Map();
   for (const dep of allDeps) {
     const swiftName = dep.swiftName;
     if (swiftName == null) {
       continue;
     }
-    const key = swiftName.toLowerCase();
+    const key = swiftNameKey(swiftName);
     const existing = seen.get(key);
     if (existing != null) {
-      const same = existing.swiftName === swiftName;
       throw new SpmNameCollisionError(
         `react-native autolinking: SPM Swift name collision: '${existing.name}' ('${existing.swiftName}') and '${dep.name}' ('${swiftName}') ` +
-          (same
-            ? `both resolve to '${swiftName}'.`
-            : `differ only in case, which collides on case-insensitive filesystems.`) +
+          collisionDiagnosis(existing.swiftName, swiftName) +
           ` Set a distinct 'spm.name' in one of their react-native.config.js files.`,
       );
     }
@@ -424,6 +419,28 @@ function defaultResolveDep(
   }
 }
 
+function defaultReadPodspec(
+  root /*: string */,
+  podspecPath /*: ?string */,
+) /*: ?PodspecFacts */ {
+  // Deps synthesized from `spm.dependencies` carry no podspecPath — only
+  // autolinking.json records one — so the dep root is searched as well.
+  const found = podspecPath ?? findPodspecs(root)[0];
+  if (found == null) {
+    return null;
+  }
+  try {
+    const names = readPodspecNames(found);
+    // Ruby-computed fields need the real evaluator; everything else is spared
+    // the `pod ipc spec` spawn.
+    return names.name != null || names.headerDir != null
+      ? names
+      : readPodspecCached(found);
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   SpmNameCollisionError,
   assertSwiftNameNotReserved,
@@ -431,5 +448,6 @@ module.exports = {
   isValidSwiftName,
   resolveSwiftName,
   defaultReadConfig,
+  defaultReadPodspec,
   defaultResolveDep,
 };

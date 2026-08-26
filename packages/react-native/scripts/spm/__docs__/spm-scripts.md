@@ -352,6 +352,55 @@ Each entry becomes a target in `build/generated/autolinking/Package.swift`.
 Sources outside `build/generated/autolinking/` are automatically mirrored with
 file-level symlinks.
 
+## Library names
+
+An autolinked library's SwiftPM target name is also the prefix its headers are
+imported under (`#import <RNSVG/…>`), so it is not cosmetic: it has to be the
+prefix the library's own sources and its dependents already use. Its podspec is
+where that prefix is declared, so that is where the autolinker reads it:
+
+| Precedence | Source                                               | Example                               |
+| ---------- | ---------------------------------------------------- | ------------------------------------- |
+| 1          | `spm.name` in the library's `react-native.config.js` | `RNSVGFork`                           |
+| 2          | podspec `header_dir`                                 | `React-Core` → `React`                |
+| 3          | podspec name                                         | `react-native-svg` → `RNSVG`          |
+| 4          | npm package name                                     | `react-native-svg` → `ReactNativeSvg` |
+
+`header_dir` comes first because that is what a library sets when its import
+prefix differs from its pod name. Step 4 only applies to a library that ships no
+podspec — typically one that ships its own `Package.swift` and names its targets
+itself.
+
+An unreadable podspec falls through to the next step rather than failing the
+build; it is a file only CocoaPods needs. A prefix Swift cannot spell is
+normalized rather than abandoned — `Some.Pod` becomes `Some_Pod`, the identifier
+SwiftPM would compile it as anyway — with a warning naming `spm.name` as the way
+to choose the prefix yourself.
+
+### Name collisions
+
+Two kinds of name are refused: one React Native reserves for its own packages
+and products (`ReactNative`, `ReactHeaders`, `ReactNativeHeaders`,
+`ReactNativeDependenciesHeaders`, `ReactAppHeaders`, `React-GeneratedCode`,
+`ReactCodegen`, `ReactAppDependencyProvider`, `Autolinked`), and one another
+autolinked library already resolved to. Either is a **hard error** naming
+`spm.name` as the fix — nothing is renamed automatically, because a name the
+build invented is a name no `#import` in your source tree can predict.
+
+Two names have to differ by more than case or punctuation to be two targets:
+`worklets` and `Worklets` are one directory in the headers tree, and `foo-bar`
+and `foo_bar` are one module, because SwiftPM replaces every character C99
+rejects with `_`.
+
+```js
+// A fork whose podspec is still named RNSVG, which react-native-svg has:
+// react-native-svg-fork/react-native.config.js
+module.exports = {
+  dependency: {platforms: {ios: {}}},
+  spm: {name: 'RNSVGFork'},
+};
+```
+
 ## Dependencies between libraries
 
 SwiftPM has no equivalent of a podspec's `s.dependency`, so a library that needs
@@ -490,6 +539,7 @@ across apps; refresh it with `react-native spm update --download force`.
 | `spm add` fails: "no .xcodeproj found"                                                                                 | Create an app first (`npx @react-native-community/cli init`) or make a project in Xcode, then `spm add`.                                                                                                                                                                                                                                                    |
 | `spm add` fails: "multiple .xcodeproj found"                                                                           | Pass `--xcodeproj <path>` (and `--product-name <target>` if multiple app targets).                                                                                                                                                                                                                                                                          |
 | `Package.swift is missing for library "<name>"` (exit 2)                                                               | The dep ships no SwiftPM support. `npx react-native spm scaffold`, then re-run setup; persist with `patch-package`. See [Community packages without a Package.swift](#community-packages-without-a-packageswift)                                                                                                                                            |
+| `SPM Swift name collision`                                                                                             | Two libraries resolved to one Swift name, or one took a name React Native reserves. Set `spm.name` in the library's `react-native.config.js` — see [Library names](#library-names)                                                                                                                                                                          |
 | Missing headers                                                                                                        | Re-run `react-native spm`                                                                                                                                                                                                                                                                                                                                   |
 | "not contained in target"                                                                                              | Re-run setup (regenerates file-level symlinks)                                                                                                                                                                                                                                                                                                              |
 | Codegen fails                                                                                                          | Use `--skipCodegen` to iterate on other parts                                                                                                                                                                                                                                                                                                               |

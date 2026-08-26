@@ -10,7 +10,12 @@
 
 'use strict';
 
-const {flattenSubspecs, readPodspec, regexPodspec} = require('../read-podspec');
+const {
+  flattenSubspecs,
+  readPodspec,
+  readPodspecNames,
+  regexPodspec,
+} = require('../read-podspec');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -95,6 +100,64 @@ function writeFixture(name, content) {
 // ---------------------------------------------------------------------------
 
 describe('regexPodspec', () => {
+  it('ignores commented-out lines, so a stale `# s.header_dir` cannot rename a library', () => {
+    const {file, dir} = writeFixture(
+      'commented.podspec',
+      [
+        'Pod::Spec.new do |s|',
+        '  s.name = "RNSVG"',
+        '  # s.header_dir = "OldPrefix"',
+        '  s.header_dir = "rnsvg"',
+        'end',
+        '',
+      ].join('\n'),
+    );
+    try {
+      expect(regexPodspec(file).header_dir).toBe('rnsvg');
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  it('ignores a commented-out field with no live counterpart', () => {
+    const {file, dir} = writeFixture(
+      'commented-only.podspec',
+      [
+        'Pod::Spec.new do |s|',
+        '  s.name = "RNSVG"',
+        '  # s.header_dir = "OldPrefix"',
+        'end',
+        '',
+      ].join('\n'),
+    );
+    try {
+      expect(regexPodspec(file).header_dir).toBeNull();
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  it('keeps a `#` that is inside a string or trails a statement', () => {
+    const {file, dir} = writeFixture(
+      'hash.podspec',
+      [
+        'Pod::Spec.new do |s|',
+        '  s.name = "RNSVG" # the pod everyone imports',
+        '  s.summary = "# not a comment"',
+        '  s.header_dir = "rnsvg"',
+        'end',
+        '',
+      ].join('\n'),
+    );
+    try {
+      const raw = regexPodspec(file);
+      expect(raw.name).toBe('RNSVG');
+      expect(raw.header_dir).toBe('rnsvg');
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
   it('extracts name, version, source_files, dependency from a real-world simple podspec', () => {
     const {file, dir} = writeFixture(
       'react-native-safe-area-context.podspec',
@@ -459,6 +522,53 @@ describe('flattenSubspecs', () => {
 // mocking), so we exercise the fallback path: when `pod` isn't on PATH, the
 // regex parser kicks in transparently.
 // ---------------------------------------------------------------------------
+
+describe('readPodspecNames', () => {
+  it('reads the two fields that name a library', () => {
+    const {file, dir} = writeFixture(
+      'reanimated.podspec',
+      REANIMATED_LIKE_PODSPEC,
+    );
+    try {
+      expect(readPodspecNames(file)).toEqual({
+        name: 'RNReanimated',
+        headerDir: 'reanimated',
+      });
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  it('reports a missing header_dir as null', () => {
+    const {file, dir} = writeFixture('simple.podspec', SIMPLE_LIB_PODSPEC);
+    try {
+      expect(readPodspecNames(file)).toEqual({
+        name: 'react-native-foo',
+        headerDir: null,
+      });
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  it('reports both as null when the podspec interpolates them', () => {
+    const {file, dir} = writeFixture(
+      'interpolated.podspec',
+      [
+        'Pod::Spec.new do |s|',
+        '  s.name = package["name"]',
+        '  s.version = "1.0"',
+        'end',
+        '',
+      ].join('\n'),
+    );
+    try {
+      expect(readPodspecNames(file)).toEqual({name: null, headerDir: null});
+    } finally {
+      fs.rmSync(dir, {recursive: true, force: true});
+    }
+  });
+});
 
 describe('readPodspec', () => {
   it('throws a clear error when the file does not exist', () => {

@@ -38,11 +38,13 @@ import type {
 const {
   SpmNameCollisionError,
   defaultReadConfig,
+  defaultReadPodspec,
   defaultResolveDep,
   expandSpmDependencies,
+  resolveSwiftName,
 } = require('./expand-spm-dependencies');
 const {expandSpmSourceGlobs} = require('./generate-spm-autolinking');
-const {readPodspec} = require('./read-podspec');
+const {findPodspecs, readPodspecCached} = require('./read-podspec');
 const {
   REACT_CODEGEN_PACKAGE_NAME,
   REACT_CODEGEN_PRODUCTS,
@@ -246,22 +248,16 @@ function translatePodspecToSpmTarget(
 ) /*: SpmScaffoldSpec */ {
   const warnings = [...model.warnings];
 
-  // Swift target name: whatever the autolinker resolved for this dep — its
-  // `spm.name` override when set, else toSwiftName(npm-name). The autolinker
-  // registers the dep under that name in its aggregator (and in any sibling
-  // spm.dependencies refs), so the scaffolded Package.swift's product/library
-  // name must match it exactly — otherwise SPM resolution fails with a name
-  // mismatch on `.product(name: "X", package: "X")`.
-  //
-  // The podspec's `header_dir` is captured separately: when it changes the
-  // include surface (e.g. `<reanimated/...>` instead of `<ReactNativeReanimated/...>`),
-  // header resolution already works via the -I flags from headerSearchPaths
-  // (path-style includes like safe-area-context's
-  // `<react/renderer/components/safeareacontext/...>` resolve through
-  // `-I common/cpp/`). Module-style includes that NEED the target name to
-  // match (e.g. reanimated's `<reanimated/X.h>` via SwiftPM's auto-generated
-  // module map) are what `spm.name` is for.
-  const swiftName = dep.swiftName ?? toSwiftName(dep.name);
+  // Whatever the autolinker resolved (see resolveSwiftName). It registers the
+  // dep under that name in its aggregator and in any sibling spm.dependencies
+  // refs, so the scaffolded product/library name must match it exactly —
+  // otherwise SPM fails to resolve `.product(name: "X", package: "X")`.
+  const swiftName = dep.swiftName;
+  if (swiftName == null) {
+    throw new Error(
+      `react-native spm scaffold: no resolved Swift name for '${dep.name}'. expandSpmDependencies must resolve every dep's name before a manifest is written.`,
+    );
+  }
 
   // Header search paths — substitute Xcode build-setting tokens against the
   // dep root. Anything we can't substitute is dropped + warned (avoids
@@ -925,25 +921,10 @@ function scaffoldPackageSwiftForDep(
     }
   }
 
-  // Find a podspec to read. autolinking.json may have provided podspecPath;
-  // otherwise glob for *.podspec in dep root.
+  // autolinking.json may have provided podspecPath; otherwise search dep.root.
   // $FlowFixMe[prop-missing] dynamic shape from autolinking.json
-  let podspecPath /*: ?string */ = dep.platforms.ios.podspecPath ?? null;
-  if (podspecPath == null) {
-    try {
-      const entries = fs.readdirSync(dep.root);
-      // Skip a crashed run's leftover patched copy (read-podspec.js stages it
-      // as `.spm-scaffold-<pid>-<name>.podspec` next to the original).
-      const candidate = entries.find(
-        e => e.endsWith('.podspec') && !e.startsWith('.spm-scaffold-'),
-      );
-      if (candidate != null) {
-        podspecPath = path.join(dep.root, candidate);
-      }
-    } catch {
-      // dep.root may not exist; treat as no-podspec
-    }
-  }
+  const podspecPath /*: ?string */ =
+    dep.platforms.ios.podspecPath ?? findPodspecs(dep.root)[0];
   if (podspecPath == null || !fs.existsSync(podspecPath)) {
     return {
       depName,
@@ -954,7 +935,7 @@ function scaffoldPackageSwiftForDep(
 
   let model;
   try {
-    model = readPodspec(podspecPath);
+    model = readPodspecCached(podspecPath);
   } catch (e) {
     return {
       depName,
@@ -1158,17 +1139,26 @@ function scaffoldAll(
     allDeps = expandSpmDependencies(directDeps, {
       readConfig: defaultReadConfig,
       resolveDep: defaultResolveDep,
+      readPodspec: defaultReadPodspec,
       extraReservedNames: remote != null ? [remote.identity] : undefined,
-      log,
     });
   } catch (e) {
     if (e instanceof SpmNameCollisionError) {
       throw e;
     }
     // A transitive-resolution failure shouldn't abort the whole scaffold pass;
-    // fall back to the direct deps so at least those get manifests.
+    // fall back to the direct deps so at least those get manifests. They are
+    // named the same way the autolinker names them — a manifest written under
+    // any other name outlives this error on disk and then fails to resolve.
     log(`Transitive spm.dependencies expansion failed: ${e.message}`);
-    allDeps = directDeps;
+    allDeps = directDeps.map(dep => ({
+      ...dep,
+      swiftName: resolveSwiftName(
+        dep.name,
+        defaultReadConfig(dep.root),
+        defaultReadPodspec(dep.root, dep.platforms.ios.podspecPath),
+      ),
+    }));
   }
 
   // Index every autolinked dep's podspec name → its npm name, so a dep that
@@ -1187,14 +1177,8 @@ function scaffoldAll(
       // discover the podspec at the dep root so podspec-name sibling deps
       // (e.g. `s.dependency "TestLibraryCommon"`) still wire to their npm
       // package.
-      try {
-        for (const f of fs.readdirSync(dep.root)) {
-          if (f.endsWith('.podspec') && !f.startsWith('.spm-scaffold-')) {
-            podToNpm.set(path.basename(f, '.podspec'), dep.name);
-          }
-        }
-      } catch {
-        // unreadable dep root — sibling wiring falls back to the warning path
+      for (const found of findPodspecs(dep.root)) {
+        podToNpm.set(path.basename(found, '.podspec'), dep.name);
       }
     }
   }

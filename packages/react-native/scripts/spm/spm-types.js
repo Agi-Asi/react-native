@@ -143,10 +143,11 @@ export type AutolinkedDep = {
   name: string,
   root: string,
   platforms: {ios: AutolinkingIosPlatform, ...},
-  // Resolved Swift target / module / headers-subdir name. Defaults to
-  // toSwiftName(name) and is overridden by the dep's react-native.config.js
-  // `spm.name`. Populated by expandSpmDependencies — always present after
-  // expansion; optional in the type so caller-side construction stays simple.
+  // Resolved Swift target / module / headers-subdir name — the dep's podspec
+  // `header_dir` or name, overridden by its react-native.config.js `spm.name`
+  // (see resolveSwiftName). Populated by expandSpmDependencies — always present
+  // after expansion; optional in the type so caller-side construction stays
+  // simple.
   swiftName?: string,
   // Populated by expandSpmDependencies from each dep's
   // react-native.config.js `spm.dependencies` array.
@@ -462,8 +463,7 @@ export type PodspecModel = {
 // Decouples podspec reading from SPM-specific shaping so each side can be
 // tested in isolation.
 export type SpmScaffoldSpec = {
-  // Swift target / module name. Default: toSwiftName(podspec.name); overridden
-  // by `header_dir` when present.
+  // Swift target / module name, as resolved by expandSpmDependencies.
   swiftName: string,
   // Source file paths relative to the dep root, ready for `sources: [...]`
   // emission after the `root/` wrapper-dir prefix is applied at emit time.
