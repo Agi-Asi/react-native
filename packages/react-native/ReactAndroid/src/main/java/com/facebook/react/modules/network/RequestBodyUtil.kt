@@ -29,7 +29,7 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 import okio.BufferedSink
 import okio.ByteString
-import okio.Okio
+import okio.source
 import okio.Source
 
 /**
@@ -152,7 +152,7 @@ internal object RequestBodyUtil {
       override fun writeTo(sink: BufferedSink) {
         var source: Source? = null
         try {
-          source = Okio.source(inputStream)
+          source = inputStream.source()
           sink.writeAll(source)
         } finally {
           source?.let { closeQuietly(it) }

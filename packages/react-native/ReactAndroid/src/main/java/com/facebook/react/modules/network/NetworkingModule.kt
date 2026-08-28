@@ -43,7 +43,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody
 import okio.ByteString
 import okio.GzipSource
-import okio.Okio
+import okio.buffer
 
 /** Implements the XMLHttpRequest JavaScript interface. */
 @ReactModule(name = NativeNetworkingAndroidSpec.NAME)
@@ -685,7 +685,7 @@ public class NetworkingModule(
                         ResponseBody.create(
                             parsedContentType,
                             -1L,
-                            Okio.buffer(gzipSource),
+                            gzipSource.buffer(),
                         )
                   }
                   // To satisfy the compiler, this is already checked above
