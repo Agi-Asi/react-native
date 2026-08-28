@@ -45,7 +45,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
-import okio.Okio
+import okio.buffer
+import okio.sink
 
 /**
  * Helper class for all things about the debug server running in the engineer's host machine.
@@ -330,8 +331,8 @@ public open class DevServerHelper(
         if (!response.isSuccessful || response.body() == null) {
           return null
         }
-        Okio.sink(outputFile).use { output ->
-          Okio.buffer(response.body()?.source()!!).readAll(output)
+        outputFile.sink().use { output ->
+          response.body()?.source()!!.buffer().readAll(output)
         }
         return outputFile
       }

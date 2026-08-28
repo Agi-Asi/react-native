@@ -14,7 +14,8 @@ import java.io.IOException
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import okio.BufferedSink
-import okio.Okio
+import okio.buffer
+import okio.sink
 import okio.Sink
 
 internal class ProgressRequestBody(
@@ -40,7 +41,7 @@ internal class ProgressRequestBody(
     // In 99% of cases, this method is called strictly once.
     // The only case when it is called more than once is internal okhttp upload re-try.
     // We need to re-create CountingOutputStream in this case as progress should be re-evaluated.
-    val sinkWrapper = Okio.buffer(outputStreamSink(sink))
+    val sinkWrapper = outputStreamSink(sink).buffer()
 
     // contentLength changes for input streams, since we're using inputStream.available(),
     // so get the length before writing to the sink
@@ -53,7 +54,7 @@ internal class ProgressRequestBody(
   fun innerBody(): RequestBody = requestBody
 
   private fun outputStreamSink(sink: BufferedSink): Sink {
-    return Okio.sink(
+    val countingOutputStream =
         object : FilterOutputStream(sink.outputStream()) {
           private var count: Long = 0
 
@@ -77,7 +78,7 @@ internal class ProgressRequestBody(
             val contentLength = contentLength()
             progressListener.onProgress(bytesWritten, contentLength, bytesWritten == contentLength)
           }
-        },
-    )
+        }
+    return countingOutputStream.sink()
   }
 }
