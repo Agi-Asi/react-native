@@ -27,7 +27,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okio.BufferedSource
-import okio.Okio
+import okio.sink
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -329,7 +329,7 @@ public class BundleDownloader public constructor(private val client: OkHttpClien
 
     @Throws(IOException::class)
     private fun storePlainJSInFile(body: BufferedSource, outputFile: File): Boolean {
-      Okio.sink(outputFile).use { sink -> body.readAll(sink) }
+      outputFile.sink().use { sink -> body.readAll(sink) }
       return true
     }
 

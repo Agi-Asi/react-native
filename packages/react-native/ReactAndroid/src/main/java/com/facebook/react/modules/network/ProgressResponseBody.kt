@@ -15,7 +15,7 @@ import okhttp3.ResponseBody
 import okio.Buffer
 import okio.BufferedSource
 import okio.ForwardingSource
-import okio.Okio
+import okio.buffer
 import okio.Source
 
 public class ProgressResponseBody
@@ -34,7 +34,7 @@ public constructor(
 
   public override fun source(): BufferedSource {
     if (!::bufferedSource.isInitialized) {
-      bufferedSource = Okio.buffer(source(responseBody.source()))
+      bufferedSource = source(responseBody.source()).buffer()
     }
     return bufferedSource
   }

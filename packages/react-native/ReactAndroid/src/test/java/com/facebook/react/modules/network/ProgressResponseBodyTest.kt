@@ -15,7 +15,8 @@ import okhttp3.MediaType
 import okhttp3.ResponseBody
 import okio.Buffer
 import okio.BufferedSource
-import okio.Okio
+import okio.buffer
+import okio.source
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
 import org.junit.Test
@@ -38,7 +39,7 @@ class ProgressResponseBodyTest {
       content: ByteArray = ByteArray(0),
   ): ResponseBody {
     val inputStream = ByteArrayInputStream(content)
-    val bufferedSource = Okio.buffer(Okio.source(inputStream))
+    val bufferedSource = inputStream.source().buffer()
 
     return object : ResponseBody() {
       override fun contentType(): MediaType? = contentType

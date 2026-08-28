@@ -15,7 +15,7 @@ import kotlin.math.max
 import okio.Buffer
 import okio.BufferedSource
 import okio.ByteString
-import okio.Okio
+import okio.buffer
 import okio.Source
 import okio.Timeout
 
@@ -159,7 +159,7 @@ internal class MultipartStreamReader(
     if (indexOfMarker == -1L || indexOfMarker >= chunkLength) {
       // No headers marker found inside the chunk. Treat the entire chunk as body.
       val bodyLength = chunkLength
-      val body = Okio.buffer(FixedLengthSource(content, bodyLength))
+      val body = FixedLengthSource(content, bodyLength).buffer()
       try {
         listener.onChunkComplete(emptyMap(), body, done)
       } finally {
@@ -175,7 +175,7 @@ internal class MultipartStreamReader(
     val headers = parseHeaders(headersBuf)
 
     val maxBodyLength = chunkLength - indexOfMarker - marker.size().toLong()
-    val body = Okio.buffer(FixedLengthSource(content, maxBodyLength))
+    val body = FixedLengthSource(content, maxBodyLength).buffer()
     try {
       listener.onChunkComplete(headers, body, done)
     } finally {
