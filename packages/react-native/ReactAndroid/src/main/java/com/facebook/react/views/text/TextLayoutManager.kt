@@ -36,6 +36,7 @@ import com.facebook.react.common.annotations.UnstableReactNativeAPI
 import com.facebook.react.common.mapbuffer.MapBuffer
 import com.facebook.react.common.mapbuffer.ReadableMapBuffer
 import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
+import com.facebook.react.util.AndroidVersion
 import com.facebook.react.uimanager.DisplayMetricsHolder
 import com.facebook.react.uimanager.PixelUtil
 import com.facebook.react.uimanager.PixelUtil.dpToPx
@@ -119,6 +120,19 @@ internal object TextLayoutManager {
       StaticLayout.Builder::class
           .java
           .getMethod("setUseBoundsForWidth", Boolean::class.javaPrimitiveType)
+    } catch (_: ReflectiveOperationException) {
+      null
+    }
+  }
+
+  // Lazily cached Method for StaticLayout.Builder.setShiftDrawingOffsetForStartOverhang (API 35+).
+  // Reflection is needed because some internal targets compile against an SDK older than 35.
+  private val setShiftDrawingOffsetForStartOverhangMethod: java.lang.reflect.Method? by lazy {
+    try {
+      StaticLayout.Builder::class
+          .java
+          .getMethod(
+              "setShiftDrawingOffsetForStartOverhang", Boolean::class.javaPrimitiveType)
     } catch (_: ReflectiveOperationException) {
       null
     }
@@ -870,6 +884,15 @@ internal object TextLayoutManager {
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
       builder.setUseLineSpacingFromFallbacks(true)
+    }
+
+    if (Build.VERSION.SDK_INT >= AndroidVersion.VERSION_CODE_VANILLA_ICE_CREAM) {
+      // Measure the width using the glyph bounds and shift the drawing offset
+      // for start overhang so that leading ink that extends past the glyph's
+      // advance width (e.g. Arabic alef-wasla / lam-alef ligatures) is not
+      // clipped at the start of a line.
+      setUseBoundsForWidthMethod?.invoke(builder, true)
+      setShiftDrawingOffsetForStartOverhangMethod?.invoke(builder, true)
     }
 
     return builder.build()
