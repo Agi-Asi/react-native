@@ -691,15 +691,19 @@ void FabricUIManagerBinding::schedulerDidFinishTransaction(
     }
 
     std::unique_lock<std::mutex> lock(pendingTransactionsMutex_);
+    // An incoming transaction was diffed against a shadow tree state that
+    // already reflects everything queued for this surface. Merge into the
+    // most recently queued pending transaction; picking the oldest one could
+    // reorder mutations when more than one transaction is pending.
     auto pendingTransaction = std::find_if(
-        pendingTransactions_.begin(),
-        pendingTransactions_.end(),
+        pendingTransactions_.rbegin(),
+        pendingTransactions_.rend(),
         [&](const auto& transaction) {
           return transaction.getSurfaceId() ==
               mountingTransaction->getSurfaceId();
         });
 
-    if (pendingTransaction != pendingTransactions_.end()) {
+    if (pendingTransaction != pendingTransactions_.rend()) {
       pendingTransaction->mergeWith(std::move(*mountingTransaction));
     } else {
       pendingTransactions_.push_back(std::move(*mountingTransaction));
